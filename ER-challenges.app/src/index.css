@@ -1,0 +1,123 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #f8f9fb;
+  color: #1e2a4a;
+}
+
+h1, h2, h3, .title {
+  font-family: 'EB Garamond', serif;
+  color: #1e2a4a;
+}
+
+.box {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8edf5;
+  padding: 1.5rem;
+}
+
+.table {
+  background: transparent;
+}
+
+.table th {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b !important;
+  border-bottom: 1px solid #e8edf5 !important;
+  padding: 0.75rem 1rem;
+}
+
+.table td {
+  font-size: 14px;
+  color: #1e2a4a !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  vertical-align: middle;
+  padding: 0.85rem 1rem;
+}
+
+.table.is-hoverable tbody tr:hover {
+  background: #f8faff !important;
+}
+
+.tag.is-success {
+  background-color: #1e3a8a !important;
+  color: #fff !important;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.tag.is-success.is-light {
+  background-color: #eff6ff !important;
+  color: #1e3a8a !important;
+}
+
+.tag.is-info {
+  background-color: #e0e7ff !important;
+  color: #3730a3 !important;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tag.is-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tag.is-danger {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tag.is-light {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  font-size: 11px;
+}
+
+.progress {
+  height: 6px !important;
+  border-radius: 99px !important;
+  background: #e8edf5 !important;
+}
+
+.progress.is-success::-webkit-progress-value {
+  background-color: #1e3a8a !important;
+  border-radius: 99px !important;
+}
+
+.progress.is-success::-moz-progress-bar {
+  background-color: #1e3a8a !important;
+  border-radius: 99px !important;
+}
+
+.heading {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #64748b !important;
+  margin-bottom: 6px !important;
+}
+
+.has-text-grey {
+  color: #475569 !important;
+}
