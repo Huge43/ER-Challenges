@@ -6,6 +6,7 @@ import membersRouter from './src/routes/members.js'
 import challengesRouter from './src/routes/challenges.js'
 import runsRouter from './src/routes/runs.js'
 import dashboardRouter from './src/routes/dashboard.js'
+import authRouter from './src/routes/auth.js'
 
 dotenv.config()
 connectDB()
@@ -14,6 +15,8 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+
+app.use('/api/auth', authRouter)
 app.use('/api/members', membersRouter)
 app.use('/api/challenges', challengesRouter)
 app.use('/api/runs', runsRouter)
