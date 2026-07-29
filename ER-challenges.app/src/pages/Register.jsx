@@ -23,7 +23,7 @@ export default function Register() {
       })
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('member', JSON.stringify(res.data.member))
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de l\'inscription.')
     } finally {

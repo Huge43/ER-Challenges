@@ -7,6 +7,9 @@ import Classement from './pages/Classement'
 import Progression from './pages/Progression'
 import SoumettreRun from './pages/SoumettreRun'
 import Membres from './pages/Membres'
+import Challenges from './pages/Challenges'
+import Profil from './pages/Profil'
+import Landing from './pages/Landing'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function Layout({ children }) {
@@ -24,18 +27,21 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/*" element={
           <ProtectedRoute>
             <Layout>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/classement" element={<Classement />} />
+                <Route path="/challenges" element={<Challenges />} />
                 <Route path="/progression" element={<Progression />} />
                 <Route path="/soumettre" element={<SoumettreRun />} />
                 <Route path="/membres" element={<Membres />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="/profil" element={<Profil />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

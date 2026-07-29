@@ -41,4 +41,16 @@ router.post('/', async (req, res) => {
   }
 })
 
+// GET runs d'un membre spécifique
+router.get('/member/:id', async (req, res) => {
+  try {
+    const runs = await Run.find({ member: req.params.id })
+      .populate('challenge', 'name')
+      .sort({ date: -1 })
+    res.json(runs)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
 export default router

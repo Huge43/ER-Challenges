@@ -1,10 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: '▦' },
+  { to: '/dashboard', label: 'Dashboard', icon: '▦' },,
   { to: '/classement', label: 'Classement', icon: '◈' },
+  { to: '/challenges', label: 'Challenges', icon: '◎' },
   { to: '/progression', label: 'Progression', icon: '◉' },
-  { to: '/membres', label: 'Membres', icon: '◎' },
+  { to: '/membres', label: 'Membres', icon: '◉' },
+  { to: '/profil', label: 'Mon profil', icon: '◉' },
   { to: '/soumettre', label: 'Soumettre une course', icon: '+' },
 ]
 

@@ -1,36 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { getDashboard } from '../api/index.js'
 
-const STAGES = [
-  { name: 'Amériques', km: 15000 },
-  { name: 'Atlantique', km: 6500 },
-  { name: 'Europe', km: 4000 },
-  { name: 'Asie', km: 9000 },
-  { name: 'Pacifique', km: 4000 },
-  { name: 'Arrivée', km: 1575 },
-]
-
-const MISSIONS = [
-  { icon: '▲', title: 'Everest Climb', desc: 'Cumuler 8 848m de dénivelé en un mois.', participants: 412, progress: 3400, goal: 8848, unit: 'm', daysLeft: 12, urgent: false },
-  { icon: '⏱', title: 'Marathon Month', desc: 'Courir au moins 42.2km chaque semaine pendant 4 semaines.', participants: 1028, progress: null, goal: null, unit: '', daysLeft: 2, urgent: true, status: 'Exceeding PR' },
-  { icon: '⚡', title: 'Speed Demon', desc: 'Maintenir un rythme sous 4:00 min/km sur plus de 10km.', participants: 156, progress: null, goal: null, unit: '', daysLeft: 28, urgent: false, status: 'Not started' },
-  { icon: '🌙', title: 'Night Owl', desc: 'Logger 5 runs entre 22h00 et 4h00 du matin.', participants: 89, progress: 3, goal: 5, unit: ' Sessions', daysLeft: 5, urgent: false },
-  { icon: '⬇', title: 'UPCOMING: IRON HEART', desc: 'Lance dans 4 jours. Accès anticipé membres premium.', participants: null, upcoming: true },
-]
+const TYPES = {
+  distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
+  streak: { label: 'Streak', icon: '🔥', color: '#e67e22' },
+}
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
 const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
+  const [challenges, setChallenges] = useState([])
+  const [activeChallenge, setActiveChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    getDashboard()
-      .then(res => setData(res.data))
-      .catch(err => console.error(err))
+    Promise.all([
+      getDashboard(),
+      axios.get('http://localhost:5000/api/challenges'),
+      axios.get('http://localhost:5000/api/challenges/active'),
+    ]).then(([dashRes, challRes, activeRes]) => {
+      setData(dashRes.data)
+      setChallenges(challRes.data)
+      setActiveChallenge(activeRes.data)
+    }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
 
@@ -46,8 +43,17 @@ export default function Dashboard() {
     </div>
   )
 
-  const pct = Math.min(100, ((data.totalKm / data.goalKm) * 100).toFixed(1))
+  const active = activeChallenge
+  const activePct = active ? Math.min(100, ((active.currentKm / active.goalKm) * 100).toFixed(1)) : 0
   const top3 = data.members?.slice(0, 3) || []
+  const now = new Date()
+
+  const getStatus = (c) => {
+    if (c.active) return { label: 'Actif', color: '#dcfce7', text: '#14532d' }
+    if (new Date(c.startDate) > now) return { label: 'À venir', color: '#e0e7ff', text: '#3730a3' }
+    if (new Date(c.endDate) < now) return { label: 'Terminé', color: '#f1f5f9', text: '#64748b' }
+    return { label: 'Inactif', color: '#fef3c7', text: '#92400e' }
+  }
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -56,16 +62,15 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-            Challenges
+            Dashboard
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '420px', lineHeight: 1.6 }}>
-            Repoussez vos limites avec l'élite. Participez aux missions collectives et aux jalons d'endurance personnels.
+            Repoussez vos limites avec l'élite. Suivez le challenge actif et les défis de la communauté.
           </p>
         </div>
         <div style={{
           background: '#fff', border: '1px solid #e8edf5', borderRadius: '12px',
-          padding: '1rem 1.5rem', textAlign: 'right',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          padding: '1rem 1.5rem', textAlign: 'right', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
         }}>
           <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
             Membres actifs
@@ -76,72 +81,74 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Challenge principal + Top contributeurs */}
+      {/* Challenge actif + Top contributeurs */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.25rem', marginBottom: '2.5rem' }}>
 
-        {/* Challenge principal */}
+        {/* Challenge actif */}
         <div style={{
           background: '#fff', borderRadius: '16px',
           border: '1px solid #e8edf5', padding: '1.75rem',
           boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
         }}>
-          <span style={{
-            display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
-            background: '#dcfce7', color: '#14532d',
-            fontSize: '11px', fontWeight: 600, marginBottom: '1rem',
-          }}>
-            Objectif collectif
-          </span>
-          <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
-            Tour du monde
-          </h2>
-          <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-            L'élite se mobilise pour parcourir collectivement la circonférence de la Terre.
-          </p>
+          {active ? (
+            <>
+              <span style={{
+                display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
+                background: '#dcfce7', color: '#14532d',
+                fontSize: '11px', fontWeight: 600, marginBottom: '1rem',
+              }}>
+                {TYPES[active.type]?.icon} Challenge actif
+              </span>
+              <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
+                {active.name}
+              </h2>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                {active.description || 'Contribuez au défi collectif de la communauté.'}
+              </p>
 
-          {/* Carte visuelle */}
-          <div style={{
-            background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 50%, #14532d 100%)',
-            borderRadius: '12px', height: '140px', marginBottom: '1.25rem',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '80%', height: '1px', background: 'rgba(255,255,255,0.15)' }} />
+              <div style={{
+                background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 50%, #14532d 100%)',
+                borderRadius: '12px', height: '140px', marginBottom: '1.25rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '80%', height: '1px', background: 'rgba(255,255,255,0.15)' }} />
+                </div>
+                <div style={{
+                  position: 'absolute', left: `${activePct}%`, top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '12px', height: '12px', background: '#4ade80', borderRadius: '50%',
+                  boxShadow: '0 0 12px rgba(74, 222, 128, 0.8)',
+                }} />
+                <p style={{
+                  position: 'absolute', bottom: '12px', left: '16px',
+                  fontSize: '11px', color: 'rgba(255,255,255,0.5)',
+                  fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                }}>
+                  {active.name}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <p style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
+                  {active.currentKm?.toLocaleString()} / {active.goalKm?.toLocaleString()} km
+                </p>
+                <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#14532d' }}>
+                  {activePct}%
+                </p>
+              </div>
+              <div style={{ background: '#e8edf5', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${activePct}%`, background: '#16a34a', borderRadius: '99px', transition: 'width 0.6s ease' }} />
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <div style={{ fontSize: '40px', marginBottom: '1rem' }}>🏁</div>
+              <p style={{ fontSize: '16px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>Aucun challenge actif</p>
+              <p style={{ fontSize: '13px', color: '#94a3b8' }}>Un admin doit activer un challenge pour qu'il apparaisse ici.</p>
             </div>
-            <div style={{
-              position: 'absolute',
-              left: `${pct}%`,
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '12px', height: '12px',
-              background: '#4ade80', borderRadius: '50%',
-              boxShadow: '0 0 12px rgba(74, 222, 128, 0.8)',
-            }} />
-            <p style={{
-              position: 'absolute', bottom: '12px', left: '16px',
-              fontSize: '11px', color: 'rgba(255,255,255,0.5)',
-              fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-            }}>
-              Tour du monde 2026
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <p style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
-              {data.totalKm?.toLocaleString()} / {data.goalKm?.toLocaleString()} km
-            </p>
-            <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#14532d' }}>
-              {pct}%
-            </p>
-          </div>
-          <div style={{ background: '#e8edf5', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${pct}%`,
-              background: '#16a34a', borderRadius: '99px',
-              transition: 'width 0.6s ease',
-            }} />
-          </div>
+          )}
         </div>
 
         {/* Top contributeurs */}
@@ -158,10 +165,7 @@ export default function Dashboard() {
           </div>
 
           {top3.map((m, i) => (
-            <div key={m._id} style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              marginBottom: '1.25rem',
-            }}>
+            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
               <div style={{ position: 'relative' }}>
                 <div style={{
                   width: '42px', height: '42px', borderRadius: '50%',
@@ -176,144 +180,104 @@ export default function Dashboard() {
                   width: '18px', height: '18px', borderRadius: '50%',
                   background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#d97706',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', fontWeight: 700, color: '#fff',
-                  border: '2px solid #fff',
+                  fontSize: '10px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
                 }}>
                   {i + 1}
                 </div>
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
-                <p style={{ fontSize: '12px', color: '#64748b' }}>{m.totalKm} km cette semaine</p>
+                <p style={{ fontSize: '12px', color: '#64748b' }}>{m.totalKm} km</p>
               </div>
             </div>
           ))}
 
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem', marginTop: '0.5rem' }}>
-            <button
-              onClick={() => navigate('/classement')}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: '13px', color: '#1e3a8a', fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: 0,
-              }}
-            >
+            <button onClick={() => navigate('/classement')} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '13px', color: '#1e3a8a', fontWeight: 600, padding: 0,
+            }}>
               Voir tout le classement →
             </button>
           </div>
         </div>
       </div>
 
-      {/* Missions actives */}
+      {/* Tous les challenges */}
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
-            Missions actives
+            Tous les challenges
           </h2>
+          <button onClick={() => navigate('/challenges')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '13px', color: '#1e3a8a', fontWeight: 600,
+          }}>
+            Gérer les challenges →
+          </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-          {MISSIONS.map((mission, i) => (
-            <div key={i} style={{
-              background: mission.upcoming ? 'transparent' : '#fff',
-              border: mission.upcoming ? '2px dashed #e2e8f0' : '1px solid #e8edf5',
-              borderRadius: '14px', padding: '1.5rem',
-              boxShadow: mission.upcoming ? 'none' : '0 1px 4px rgba(0,0,0,0.05)',
-              display: 'flex', flexDirection: 'column',
-            }}>
-              {mission.upcoming ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0' }}>
-                  <div style={{
-                    width: '44px', height: '44px', borderRadius: '10px',
-                    background: '#f1f5f9', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '20px', marginBottom: '1rem',
-                  }}>
-                    ⬇
-                  </div>
-                  <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '8px' }}>
-                    {mission.title}
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#94a3b8' }}>{mission.desc}</p>
-                </div>
-              ) : (
-                <>
+        {challenges.length === 0 ? (
+          <div style={{
+            background: '#fff', borderRadius: '16px', border: '2px dashed #e2e8f0',
+            padding: '3rem 2rem', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🏁</div>
+            <p style={{ fontSize: '14px', color: '#64748b' }}>Aucun challenge pour le moment.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            {challenges.map(c => {
+              const status = getStatus(c)
+              const typeInfo = TYPES[c.type] || TYPES.distance
+              const pct = Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1))
+              return (
+                <div key={c._id} style={{
+                  background: '#fff', border: c.active ? '2px solid #16a34a' : '1px solid #e8edf5',
+                  borderRadius: '14px', padding: '1.5rem',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div style={{
                       width: '44px', height: '44px', borderRadius: '10px',
-                      background: '#f1f5f9', display: 'flex', alignItems: 'center',
+                      background: `${typeInfo.color}15`, display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: '20px',
                     }}>
-                      {mission.icon}
+                      {c.icon || typeInfo.icon}
                     </div>
                     <span style={{
                       fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px',
-                      background: mission.urgent ? '#fee2e2' : '#f1f5f9',
-                      color: mission.urgent ? '#991b1b' : '#64748b',
+                      background: status.color, color: status.text,
                     }}>
-                      {mission.urgent ? `Ends in ${mission.daysLeft} days` : `${mission.daysLeft} days left`}
+                      {status.label}
                     </span>
                   </div>
 
                   <h3 style={{ fontFamily: 'EB Garamond, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-                    {mission.title}
+                    {c.name}
                   </h3>
-                  <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1rem', flex: 1 }}>
-                    {mission.desc}
+                  <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1rem', minHeight: '38px' }}>
+                    {c.description || 'Pas de description.'}
                   </p>
 
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
-                      <span>{mission.participants} participants</span>
-                      {mission.progress !== null && mission.goal ? (
-                        <span style={{ fontWeight: 600, color: '#1e2a4a' }}>
-                          {mission.progress?.toLocaleString()}{mission.unit} / {mission.goal?.toLocaleString()}{mission.unit}
-                        </span>
-                      ) : (
-                        <span style={{ fontWeight: 600, color: mission.urgent ? '#e67e22' : '#64748b' }}>
-                          {mission.status}
-                        </span>
-                      )}
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                      <span style={{ color: '#64748b' }}>{c.currentKm?.toLocaleString()} / {c.goalKm?.toLocaleString()} km</span>
+                      <span style={{ fontWeight: 700, color: typeInfo.color }}>{pct}%</span>
                     </div>
-                    {mission.progress !== null && mission.goal && (
-                      <div style={{ background: '#e8edf5', borderRadius: '99px', height: '5px', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${Math.min(100, (mission.progress / mission.goal) * 100)}%`,
-                          background: mission.urgent ? '#e67e22' : '#1e3a8a',
-                          borderRadius: '99px',
-                        }} />
-                      </div>
-                    )}
+                    <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '5px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button style={{
-                      flex: 1, padding: '9px 16px',
-                      background: mission.urgent ? '#fff' : '#1e2a4a',
-                      color: mission.urgent ? '#1e2a4a' : '#fff',
-                      border: mission.urgent ? '1px solid #1e2a4a' : 'none',
-                      borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                      cursor: 'pointer',
-                    }}>
-                      {mission.urgent ? 'Voir le classement' : 'Join Challenge'}
-                    </button>
-                    {!mission.urgent && (
-                      <button style={{
-                        width: '38px', height: '38px',
-                        background: '#f1f5f9', border: 'none',
-                        borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        ↗
-                      </button>
-                    )}
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    {c.participants?.length || 0} participants
                   </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -322,15 +286,8 @@ export default function Dashboard() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <p style={{ fontSize: '12px', color: '#94a3b8' }}>
-          © 2026 Elite Runners Performance Lab. Precision First.
+          © 2026 Elite Runners. Precision First.
         </p>
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
-          {['Règles', 'Politique de confidentialité', 'Support'].map(link => (
-            <a key={link} href="#" style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none' }}>
-              {link}
-            </a>
-          ))}
-        </div>
       </div>
     </div>
   )
