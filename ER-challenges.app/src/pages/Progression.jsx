@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
 const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
@@ -18,6 +19,7 @@ export default function Progression() {
   const [activeChallenge, setActiveChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     Promise.all([
@@ -62,7 +64,7 @@ export default function Progression() {
       </div>
 
       {/* Cartes de stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
           { label: 'Mes kilomètres', value: `${myKm} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
           { label: 'Total communauté', value: `${totalKm} km`, sub: `${members.length} athlètes`, color: '#1e3a8a' },
@@ -98,12 +100,12 @@ export default function Progression() {
             : 'Tu as franchi tous les paliers ! 👑'}
         </p>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
           {PALIERS.map(palier => {
             const reached = myKm >= palier.km
             return (
               <div key={palier.km} style={{
-                flex: 1, textAlign: 'center', padding: '1rem 0.5rem',
+                flex: isMobile ? '1 1 calc(33% - 10px)' : 1, textAlign: 'center', padding: '1rem 0.5rem',
                 borderRadius: '12px',
                 background: reached ? '#f0fdf4' : '#f8f9fb',
                 border: `1px solid ${reached ? '#bbf7d0' : '#e8edf5'}`,
