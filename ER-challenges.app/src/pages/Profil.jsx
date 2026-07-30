@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 export default function Profil() {
   const [member, setMember] = useState(null)
   const [runs, setRuns] = useState([])
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     Promise.all([
@@ -48,11 +50,12 @@ export default function Profil() {
 
       {/* Header profil */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 100%)',
-        borderRadius: '20px', padding: '2.5rem', marginBottom: '2rem',
-        display: 'flex', alignItems: 'center', gap: '1.5rem',
-        position: 'relative', overflow: 'hidden',
-      }}>
+         background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 100%)',
+  borderRadius: '20px', padding: isMobile ? '1.75rem' : '2.5rem', marginBottom: '2rem',
+  display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+  alignItems: isMobile ? 'flex-start' : 'center', gap: '1.5rem',
+  position: 'relative', overflow: 'hidden',
+}}>
         <div style={{
           width: '90px', height: '90px', borderRadius: '50%',
           background: '#e67e22', display: 'flex', alignItems: 'center',
@@ -85,7 +88,7 @@ export default function Profil() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
           { label: 'Km totaux', value: member.totalKm, color: '#1e3a8a' },
           { label: 'Courses', value: totalRuns, color: '#e67e22' },

@@ -16,9 +16,11 @@ export default function Dashboard() {
   const [data, setData] = useState(null)
   const [challenges, setChallenges] = useState([])
   const [activeChallenge, setActiveChallenge] = useState(null)
+  const [streaks, setStreaks] = useState({})
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const isMobile = useIsMobile()
+  const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
 
   useEffect(() => {
     Promise.all([
@@ -29,6 +31,13 @@ export default function Dashboard() {
       setData(dashRes.data)
       setChallenges(challRes.data)
       setActiveChallenge(activeRes.data)
+
+      // Charger les streaks pour tous les challenges de type streak
+      challRes.data.filter(c => c.type === 'streak').forEach(c => {
+        axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
+          .then(res => setStreaks(prev => ({ ...prev, [c._id]: res.data })))
+          .catch(err => console.error(err))
+      })
     }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
@@ -46,9 +55,32 @@ export default function Dashboard() {
   )
 
   const active = activeChallenge
-  const activePct = active ? Math.min(100, ((active.currentKm / active.goalKm) * 100).toFixed(1)) : 0
-  const top3 = data.members?.slice(0, 3) || []
   const now = new Date()
+
+  // Progression adaptée au type du challenge
+  const getProgress = (c) => {
+    if (!c) return { pct: 0, label: '', big: '' }
+    if (c.type === 'streak') {
+      const s = streaks[c._id]
+      if (!s) return { pct: 0, label: 'Calcul du streak...', big: '...' }
+      if (c.scope === 'collectif') {
+        const pct = c.goalDays ? Math.min(100, ((s.current / c.goalDays) * 100).toFixed(1)) : 0
+        return { pct, label: `${s.current} / ${c.goalDays} jours consécutifs (groupe)`, big: `${s.current}j 🔥` }
+      } else {
+        // Individuel : streak du membre connecté, sinon le meilleur
+        const mine = s.members?.find(m => m.memberId === currentMember.id)
+        const shown = mine || s.members?.[0] || { current: 0 }
+        const pct = c.goalDays ? Math.min(100, ((shown.current / c.goalDays) * 100).toFixed(1)) : 0
+        const who = mine ? 'mon streak' : `meilleur : ${shown.name || '—'}`
+        return { pct, label: `${shown.current} / ${c.goalDays} jours (${who})`, big: `${shown.current}j 🔥` }
+      }
+    }
+    const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
+    return { pct, label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
+  }
+
+  const activeProgress = getProgress(active)
+  const top3 = data.members?.slice(0, 3) || []
 
   const getStatus = (c) => {
     if (c.active) return { label: 'Actif', color: '#dcfce7', text: '#14532d' }
@@ -94,13 +126,24 @@ export default function Dashboard() {
         }}>
           {active ? (
             <>
-              <span style={{
-                display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
-                background: '#dcfce7', color: '#14532d',
-                fontSize: '11px', fontWeight: 600, marginBottom: '1rem',
-              }}>
-                {TYPES[active.type]?.icon} Challenge actif
-              </span>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
+                  background: '#dcfce7', color: '#14532d',
+                  fontSize: '11px', fontWeight: 600,
+                }}>
+                  {TYPES[active.type]?.icon} Challenge actif
+                </span>
+                {active.type === 'streak' && (
+                  <span style={{
+                    display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
+                    background: '#fff7ed', color: '#e67e22',
+                    fontSize: '11px', fontWeight: 600,
+                  }}>
+                    {active.scope === 'collectif' ? 'Streak collectif' : 'Streak individuel'}
+                  </span>
+                )}
+              </div>
               <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '24px' : '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
                 {active.name}
               </h2>
@@ -109,20 +152,30 @@ export default function Dashboard() {
               </p>
 
               <div style={{
-                background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 50%, #14532d 100%)',
+                background: active.type === 'streak'
+                  ? 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #e67e22 100%)'
+                  : 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 50%, #14532d 100%)',
                 borderRadius: '12px', height: '140px', marginBottom: '1.25rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 position: 'relative', overflow: 'hidden',
               }}>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: '80%', height: '1px', background: 'rgba(255,255,255,0.15)' }} />
-                </div>
-                <div style={{
-                  position: 'absolute', left: `${activePct}%`, top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '12px', height: '12px', background: '#4ade80', borderRadius: '50%',
-                  boxShadow: '0 0 12px rgba(74, 222, 128, 0.8)',
-                }} />
+                {active.type === 'streak' ? (
+                  <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '42px', fontWeight: 700, color: '#fff' }}>
+                    {activeProgress.big}
+                  </p>
+                ) : (
+                  <>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '80%', height: '1px', background: 'rgba(255,255,255,0.15)' }} />
+                    </div>
+                    <div style={{
+                      position: 'absolute', left: `${activeProgress.pct}%`, top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '12px', height: '12px', background: '#4ade80', borderRadius: '50%',
+                      boxShadow: '0 0 12px rgba(74, 222, 128, 0.8)',
+                    }} />
+                  </>
+                )}
                 <p style={{
                   position: 'absolute', bottom: '12px', left: '16px',
                   fontSize: '11px', color: 'rgba(255,255,255,0.5)',
@@ -134,14 +187,14 @@ export default function Dashboard() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <p style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
-                  {active.currentKm?.toLocaleString()} / {active.goalKm?.toLocaleString()} km
+                  {activeProgress.label}
                 </p>
-                <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#14532d' }}>
-                  {activePct}%
+                <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: active.type === 'streak' ? '#e67e22' : '#14532d' }}>
+                  {activeProgress.pct}%
                 </p>
               </div>
               <div style={{ background: '#e8edf5', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${activePct}%`, background: '#16a34a', borderRadius: '99px', transition: 'width 0.6s ease' }} />
+                <div style={{ height: '100%', width: `${activeProgress.pct}%`, background: active.type === 'streak' ? '#e67e22' : '#16a34a', borderRadius: '99px', transition: 'width 0.6s ease' }} />
               </div>
             </>
           ) : (
@@ -162,37 +215,67 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
             <span style={{ fontSize: '16px' }}>🏆</span>
             <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b' }}>
-              Top contributeurs
+              {active?.type === 'streak' && active.scope === 'individuel' ? 'Top streaks' : 'Top contributeurs'}
             </p>
           </div>
 
-          {top3.map((m, i) => (
-            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  width: '42px', height: '42px', borderRadius: '50%',
-                  background: COLORS[i], color: TEXT_COLORS[i],
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '13px', fontWeight: 700, flexShrink: 0,
-                }}>
-                  {m.name.split(' ').map(n => n[0]).join('')}
+          {active?.type === 'streak' && active.scope === 'individuel' && streaks[active._id]?.members ? (
+            streaks[active._id].members.slice(0, 3).map((m, i) => (
+              <div key={m.memberId} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '42px', height: '42px', borderRadius: '50%',
+                    background: COLORS[i], color: TEXT_COLORS[i],
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {m.name?.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div style={{
+                    position: 'absolute', bottom: '-2px', right: '-2px',
+                    width: '18px', height: '18px', borderRadius: '50%',
+                    background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#d97706',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
+                  }}>
+                    {i + 1}
+                  </div>
                 </div>
-                <div style={{
-                  position: 'absolute', bottom: '-2px', right: '-2px',
-                  width: '18px', height: '18px', borderRadius: '50%',
-                  background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#d97706',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
-                }}>
-                  {i + 1}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
+                  <p style={{ fontSize: '12px', color: '#e67e22', fontWeight: 600 }}>{m.current} jours 🔥</p>
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
-                <p style={{ fontSize: '12px', color: '#64748b' }}>{m.totalKm} km</p>
+            ))
+          ) : (
+            top3.map((m, i) => (
+              <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '42px', height: '42px', borderRadius: '50%',
+                    background: COLORS[i], color: TEXT_COLORS[i],
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {m.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div style={{
+                    position: 'absolute', bottom: '-2px', right: '-2px',
+                    width: '18px', height: '18px', borderRadius: '50%',
+                    background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#d97706',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
+                  }}>
+                    {i + 1}
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
+                  <p style={{ fontSize: '12px', color: '#64748b' }}>{m.totalKm} km</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <button onClick={() => navigate('/classement')} style={{
@@ -232,7 +315,7 @@ export default function Dashboard() {
             {challenges.map(c => {
               const status = getStatus(c)
               const typeInfo = TYPES[c.type] || TYPES.distance
-              const pct = Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1))
+              const progress = getProgress(c)
               return (
                 <div key={c._id} style={{
                   background: '#fff', border: c.active ? '2px solid #16a34a' : '1px solid #e8edf5',
@@ -264,11 +347,11 @@ export default function Dashboard() {
 
                   <div style={{ marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                      <span style={{ color: '#64748b' }}>{c.currentKm?.toLocaleString()} / {c.goalKm?.toLocaleString()} km</span>
-                      <span style={{ fontWeight: 700, color: typeInfo.color }}>{pct}%</span>
+                      <span style={{ color: '#64748b' }}>{progress.label}</span>
+                      <span style={{ fontWeight: 700, color: typeInfo.color }}>{progress.pct}%</span>
                     </div>
                     <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '5px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
+                      <div style={{ height: '100%', width: `${progress.pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
                     </div>
                   </div>
 

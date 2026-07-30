@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
 
   const handleSubmit = async () => {
     setError('')
@@ -35,27 +37,29 @@ export default function Login() {
       padding: '2rem',
     }}>
       <div style={{
-        display: 'flex',
-        width: '100%',
-        maxWidth: '900px',
-        background: '#fff',
-        borderRadius: '20px',
-        overflow: 'hidden',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
-      }}>
+  display: 'flex',
+  flexDirection: isMobile ? 'column' : 'row',
+  width: '100%',
+  maxWidth: isMobile ? '440px' : '900px',
+  background: '#fff',
+  borderRadius: '20px',
+  overflow: 'hidden',
+  boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+}}>
 
         {/* Colonne gauche — image */}
-        <div style={{
-          width: '420px',
-          flexShrink: 0,
-          background: 'linear-gradient(160deg, #0f1f3d 0%, #1e3a5f 60%, #2d5016 100%)',
-          padding: '3rem 2.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
+        {!isMobile && (
+  <div style={{
+    width: '420px',
+    flexShrink: 0,
+    background: 'linear-gradient(160deg, #0f1f3d 0%, #1e3a5f 60%, #2d5016 100%)',
+    padding: '3rem 2.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    position: 'relative',
+    overflow: 'hidden',
+  }}>
           {/* Overlay texture */}
           <div style={{
             position: 'absolute', inset: 0,
@@ -117,6 +121,7 @@ export default function Login() {
             border: '1px solid rgba(255,255,255,0.06)',
           }} />
         </div>
+        )}
 
         {/* Colonne droite — formulaire */}
         <div style={{

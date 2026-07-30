@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe','#e0e7ff','#fce7f3','#dcfce7','#fef3c7','#fee2e2','#f3e8ff','#e0f2fe','#f0fdf4','#fdf4ff']
 const TEXT_COLORS = ['#1e3a8a','#3730a3','#9d174d','#14532d','#92400e','#991b1b','#581c87','#0c4a6e','#14532d','#581c87']
@@ -14,6 +15,7 @@ export default function Membres() {
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
+  const isMobile = useIsMobile()
 
   const fetchMembers = () => {
     axios.get('http://localhost:5000/api/members')
@@ -86,7 +88,7 @@ export default function Membres() {
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Membres
@@ -132,11 +134,11 @@ export default function Membres() {
 
       {/* Tableau membres */}
       <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+  background: '#fff', borderRadius: '16px',
+  border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+}}>
+        <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f8f9fb' }}>
               <th style={{ padding: '14px 1.5rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Athlète</th>

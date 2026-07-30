@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
+import useIsMobile from '../hooks/useIsMobile'
 
 export default function Landing() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
 
   return (
     <div style={{ background: '#0f1f3d', minHeight: '100vh', color: '#fff' }}>
@@ -43,10 +45,10 @@ export default function Landing() {
         }}>
           La plateforme de challenges de course
         </span>
-        <h1 style={{
-          fontFamily: 'Poppins, sans-serif', fontSize: '64px', fontWeight: 700,
-          lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff',
-        }}>
+       <h1 style={{
+  fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '38px' : '64px', fontWeight: 700,
+  lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff',
+}}>
           Dominez la piste,<br /><span style={{ fontStyle: 'italic', color: '#e67e22' }}>ensemble.</span>
         </h1>
         <p style={{
@@ -56,7 +58,7 @@ export default function Landing() {
           Elite Runners réunit ta communauté autour de défis collectifs.
           Cumulez vos kilomètres, grimpez le classement et repoussez vos limites — motivés les uns par les autres.
         </p>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1rem', justifyContent: 'center' }}>
           <button onClick={() => navigate('/register')} style={{
             padding: '15px 32px', background: '#e67e22', color: '#fff',
             border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700,
@@ -82,7 +84,7 @@ export default function Landing() {
         }}>
           Comment ça marche
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
           {[
             { num: '01', icon: '👥', title: 'Rejoins', desc: 'Crée ton compte et intègre la communauté Elite Runners en quelques secondes.' },
             { num: '02', icon: '🏃', title: 'Cours', desc: 'Enregistre tes courses et ajoute tes kilomètres au challenge collectif du moment.' },
@@ -115,7 +117,7 @@ export default function Landing() {
 
       {/* Features */}
       <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1.5rem' }}>
           {[
             { icon: '🌍', title: 'Challenges collectifs', desc: 'Du Tour du monde aux défis mensuels, relevez des objectifs ambitieux en équipe.' },
             { icon: '📊', title: 'Suivi en temps réel', desc: 'Visualisez votre progression individuelle et collective avec des graphiques clairs.' },
@@ -149,7 +151,7 @@ export default function Landing() {
         background: 'linear-gradient(135deg, rgba(230,126,34,0.15) 0%, rgba(21,83,45,0.15) 100%)',
         borderRadius: '24px', margin: '3rem auto', padding: '3.5rem 3rem',
       }}>
-        <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '40px', fontWeight: 700, marginBottom: '1rem', color: '#fff' }}>
+       <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '30px' : '40px', fontWeight: 700, marginBottom: '1rem', color: '#fff' }}>
           Prêt à repousser vos limites ?
         </h2>
         <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)', marginBottom: '2rem' }}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
 const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
@@ -9,6 +10,7 @@ export default function Classement() {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     axios.get('http://localhost:5000/api/members')
@@ -31,7 +33,7 @@ export default function Classement() {
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Classement
@@ -57,7 +59,7 @@ export default function Classement() {
       </div>
 
       {/* Podium top 3 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
         {members.slice(0, 3).map((m, i) => (
           <div key={m._id} style={{
             background: i === 0 ? '#0f1f3d' : '#fff',
@@ -93,16 +95,16 @@ export default function Classement() {
 
       {/* Tableau complet */}
       <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
+  background: '#fff', borderRadius: '16px',
+  border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+}}>
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <p style={{ fontFamily: 'Poppins, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
             Tous les athlètes
           </p>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f8f9fb' }}>
               <th style={{ padding: '12px 1.5rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Rang</th>

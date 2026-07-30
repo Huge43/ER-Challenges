@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import useIsMobile from '../hooks/useIsMobile'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -9,23 +10,34 @@ const TYPES = {
 
 export default function Challenges() {
   const [challenges, setChallenges] = useState([])
+  const [streaks, setStreaks] = useState({})
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [form, setForm] = useState({
     name: '', description: '', type: 'distance', icon: '🏃',
-    goalKm: '', startDate: new Date().toISOString().split('T')[0],
+    goalKm: '', goalDays: '', scope: 'individuel',
+    startDate: new Date().toISOString().split('T')[0],
     endDate: '', active: false,
   })
   const navigate = useNavigate()
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
+  const isMobile = useIsMobile()
 
   const fetchChallenges = () => {
     axios.get('http://localhost:5000/api/challenges')
-      .then(res => setChallenges(res.data))
+      .then(res => {
+        setChallenges(res.data)
+        // Pour chaque challenge streak, récupérer son calcul de streak
+        res.data.filter(c => c.type === 'streak').forEach(c => {
+          axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
+            .then(streakRes => setStreaks(prev => ({ ...prev, [c._id]: streakRes.data })))
+            .catch(err => console.error(err))
+        })
+      })
       .catch(err => console.error(err))
       .finally(() => setLoading(false))
   }
@@ -34,21 +46,40 @@ export default function Challenges() {
 
   const handleCreate = async () => {
     setError('')
-    if (!form.name || !form.goalKm || !form.endDate) {
-      setError('Nom, objectif et date de fin sont requis.')
+    if (!form.name || !form.endDate) {
+      setError('Nom et date de fin sont requis.')
+      return
+    }
+    if (form.type === 'distance' && !form.goalKm) {
+      setError('L\'objectif en km est requis pour un challenge distance.')
+      return
+    }
+    if (form.type === 'streak' && !form.goalDays) {
+      setError('Le nombre de jours est requis pour un challenge streak.')
       return
     }
     try {
-      await axios.post('http://localhost:5000/api/challenges', {
-        ...form,
-        goalKm: Number(form.goalKm),
+      const payload = {
+        name: form.name,
+        description: form.description,
+        type: form.type,
         icon: TYPES[form.type].icon,
-      }, {
+        startDate: form.startDate,
+        endDate: form.endDate,
+        active: form.active,
+      }
+      if (form.type === 'distance') {
+        payload.goalKm = Number(form.goalKm)
+      } else {
+        payload.goalDays = Number(form.goalDays)
+        payload.scope = form.scope
+      }
+      await axios.post('http://localhost:5000/api/challenges', payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge créé avec succès !')
       setShowModal(false)
-      setForm({ name: '', description: '', type: 'distance', icon: '🏃', goalKm: '', startDate: new Date().toISOString().split('T')[0], endDate: '', active: false })
+      setForm({ name: '', description: '', type: 'distance', icon: '🏃', goalKm: '', goalDays: '', scope: 'individuel', startDate: new Date().toISOString().split('T')[0], endDate: '', active: false })
       fetchChallenges()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -91,6 +122,46 @@ export default function Challenges() {
     return { label: 'Inactif', color: '#fef3c7', text: '#92400e' }
   }
 
+  // Renvoie les infos de progression selon le type de challenge
+  const getProgress = (c) => {
+    if (c.type === 'streak') {
+      const streakData = streaks[c._id]
+      if (!streakData) return { current: 0, goal: c.goalDays, pct: 0, unit: 'jours', label: 'Chargement...' }
+
+      if (c.scope === 'collectif') {
+        const pct = c.goalDays ? Math.min(100, ((streakData.current / c.goalDays) * 100).toFixed(1)) : 0
+        return {
+          current: streakData.current,
+          goal: c.goalDays,
+          pct,
+          unit: 'jours',
+          label: `${streakData.current} / ${c.goalDays} jours (collectif)`,
+        }
+      } else {
+        // Individuel : on montre le meilleur streak actuel
+        const best = streakData.members?.[0]
+        const current = best?.current || 0
+        const pct = c.goalDays ? Math.min(100, ((current / c.goalDays) * 100).toFixed(1)) : 0
+        return {
+          current,
+          goal: c.goalDays,
+          pct,
+          unit: 'jours',
+          label: `Meilleur : ${current} / ${c.goalDays} jours`,
+        }
+      }
+    } else {
+      const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
+      return {
+        current: c.currentKm,
+        goal: c.goalKm,
+        pct,
+        unit: 'km',
+        label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`,
+      }
+    }
+  }
+
   const inputStyle = {
     width: '100%', padding: '11px 14px',
     border: '1px solid #e2e8f0', borderRadius: '8px',
@@ -113,9 +184,9 @@ export default function Challenges() {
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Challenges
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
@@ -159,11 +230,11 @@ export default function Challenges() {
           {isAdmin && <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>Créez le premier challenge de la communauté !</p>}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem' }}>
           {challenges.map(c => {
             const status = getStatus(c)
             const typeInfo = TYPES[c.type] || TYPES.distance
-            const pct = Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1))
+            const progress = getProgress(c)
             return (
               <div key={c._id} style={{
                 background: '#fff', borderRadius: '16px',
@@ -179,16 +250,27 @@ export default function Challenges() {
                   }}>
                     {c.icon || typeInfo.icon}
                   </div>
-                  <span style={{
-                    padding: '4px 12px', borderRadius: '99px',
-                    background: status.color, color: status.text,
-                    fontSize: '11px', fontWeight: 600,
-                  }}>
-                    {status.label}
-                  </span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {c.type === 'streak' && (
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '99px',
+                        background: '#fff7ed', color: '#e67e22',
+                        fontSize: '11px', fontWeight: 600,
+                      }}>
+                        {c.scope === 'collectif' ? 'Collectif' : 'Individuel'}
+                      </span>
+                    )}
+                    <span style={{
+                      padding: '4px 12px', borderRadius: '99px',
+                      background: status.color, color: status.text,
+                      fontSize: '11px', fontWeight: 600,
+                    }}>
+                      {status.label}
+                    </span>
+                  </div>
                 </div>
 
-                <h3 style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
                   {c.name}
                 </h3>
                 <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1.25rem', minHeight: '40px' }}>
@@ -197,11 +279,11 @@ export default function Challenges() {
 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                    <span style={{ color: '#64748b' }}>{c.currentKm?.toLocaleString()} / {c.goalKm?.toLocaleString()} km</span>
-                    <span style={{ fontWeight: 700, color: typeInfo.color }}>{pct}%</span>
+                    <span style={{ color: '#64748b' }}>{progress.label}</span>
+                    <span style={{ fontWeight: 700, color: typeInfo.color }}>{progress.pct}%</span>
                   </div>
                   <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
+                    <div style={{ height: '100%', width: `${progress.pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
                   </div>
                 </div>
 
@@ -246,7 +328,7 @@ export default function Challenges() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'Poppins, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
+              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
                 Créer un challenge
               </h2>
               <button onClick={() => { setShowModal(false); setError('') }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
@@ -270,7 +352,7 @@ export default function Challenges() {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={labelStyle}>Type de challenge</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                 {Object.entries(TYPES).map(([key, info]) => (
                   <button key={key} onClick={() => setForm({ ...form, type: key })} style={{
                     padding: '12px 8px', borderRadius: '8px',
@@ -285,10 +367,38 @@ export default function Challenges() {
               </div>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={labelStyle}>Objectif (km)</label>
-              <input type="number" placeholder="Ex: 40075" value={form.goalKm} onChange={e => setForm({ ...form, goalKm: e.target.value })} style={inputStyle} />
-            </div>
+            {form.type === 'distance' ? (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={labelStyle}>Objectif (km)</label>
+                <input type="number" placeholder="Ex: 40075" value={form.goalKm} onChange={e => setForm({ ...form, goalKm: e.target.value })} style={inputStyle} />
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={labelStyle}>Nombre de jours consécutifs</label>
+                  <input type="number" placeholder="Ex: 21" value={form.goalDays} onChange={e => setForm({ ...form, goalDays: e.target.value })} style={inputStyle} />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={labelStyle}>Portée du streak</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[
+                      { key: 'individuel', label: 'Individuel', desc: 'Chacun son streak' },
+                      { key: 'collectif', label: 'Collectif', desc: 'Le groupe entier' },
+                    ].map(opt => (
+                      <button key={opt.key} type="button" onClick={() => setForm({ ...form, scope: opt.key })} style={{
+                        padding: '12px', borderRadius: '8px', textAlign: 'left',
+                        border: form.scope === opt.key ? '2px solid #e67e22' : '1px solid #e2e8f0',
+                        background: form.scope === opt.key ? '#fff7ed' : '#f8fafc',
+                        cursor: 'pointer',
+                      }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: form.scope === opt.key ? '#e67e22' : '#1e2a4a' }}>{opt.label}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
               <div>
