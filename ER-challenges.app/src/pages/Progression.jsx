@@ -1,84 +1,36 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Area, AreaChart, Legend
-} from 'recharts'
+
+const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
+const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
+
+const PALIERS = [
+  { km: 50, label: 'Premiers pas', icon: '🌱' },
+  { km: 100, label: 'En rythme', icon: '🏃' },
+  { km: 250, label: 'Endurant', icon: '💪' },
+  { km: 500, label: 'Marathonien', icon: '🔥' },
+  { km: 1000, label: 'Légende', icon: '👑' },
+]
 
 export default function Progression() {
-  const [runs, setRuns] = useState([])
   const [members, setMembers] = useState([])
+  const [runs, setRuns] = useState([])
+  const [activeChallenge, setActiveChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/runs'),
       axios.get('http://localhost:5000/api/members'),
-    ]).then(([runsRes, membersRes]) => {
-      setRuns(runsRes.data)
+      axios.get('http://localhost:5000/api/runs'),
+      axios.get('http://localhost:5000/api/challenges/active'),
+    ]).then(([membersRes, runsRes, activeRes]) => {
       setMembers(membersRes.data)
+      setRuns(runsRes.data)
+      setActiveChallenge(activeRes.data)
     }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
-
-  // Données cumulatives par jour pour le challenge collectif
-  const collectiveData = () => {
-    if (!runs.length) return []
-    const sorted = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date))
-    let cumul = 0
-    const byDate = {}
-    sorted.forEach(run => {
-      const date = new Date(run.date).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })
-      cumul += run.km
-      byDate[date] = cumul
-    })
-    return Object.entries(byDate).map(([date, km]) => ({ date, km: Math.round(km) }))
-  }
-
-  // Données par membre (top 5)
-  const memberData = () => {
-    if (!runs.length || !members.length) return []
-    const top5 = members.slice(0, 5)
-    const sorted = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date))
-    const dates = [...new Set(sorted.map(r =>
-      new Date(r.date).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })
-    ))]
-
-    return dates.map(date => {
-      const point = { date }
-      top5.forEach(m => {
-        const total = sorted
-          .filter(r => r.member?._id === m._id || r.member === m._id)
-          .filter(r => new Date(r.date).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' }) <= date)
-          .reduce((sum, r) => sum + r.km, 0)
-        point[m.name.split(' ')[0]] = total
-      })
-      return point
-    })
-  }
-
-  const MEMBER_COLORS = ['#1e3a8a', '#e67e22', '#16a34a', '#9333ea', '#dc2626']
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div style={{
-          background: '#fff', border: '1px solid #e8edf5',
-          borderRadius: '10px', padding: '12px 16px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        }}>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>{label}</p>
-          {payload.map((entry, i) => (
-            <p key={i} style={{ fontSize: '13px', color: entry.color, fontWeight: 600 }}>
-              {entry.name} : {entry.value} km
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -86,43 +38,45 @@ export default function Progression() {
     </div>
   )
 
-  const collective = collectiveData()
-  const byMember = memberData()
-  const top5 = members.slice(0, 5)
+  const me = members.find(m => m._id === currentMember.id)
+  const myKm = me?.totalKm || 0
   const totalKm = runs.reduce((sum, r) => sum + r.km, 0)
-  const avgKm = members.length ? (totalKm / members.length).toFixed(1) : 0
-  const totalRuns = runs.length
+  const avgKm = members.length ? (members.reduce((s, m) => s + m.totalKm, 0) / members.length).toFixed(0) : 0
+  const maxKm = members[0]?.totalKm || 1
+
+  // Mon prochain palier
+  const nextPalier = PALIERS.find(p => p.km > myKm)
+  const lastPalier = [...PALIERS].reverse().find(p => p.km <= myKm)
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+        <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
           Progression
         </h1>
         <p style={{ fontSize: '14px', color: '#64748b' }}>
-          Visualisez l'évolution collective et individuelle du challenge.
+          Suivez l'avancée de la communauté en un coup d'œil.
         </p>
       </div>
 
-      {/* Stats rapides */}
+      {/* Cartes de stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Km totaux soumis', value: `${totalKm} km`, sub: 'depuis le début', color: '#1e3a8a' },
-          { label: 'Moyenne par membre', value: `${avgKm} km`, sub: 'par athlète', color: '#e67e22' },
-          { label: 'Courses soumises', value: totalRuns, sub: 'runs enregistrés', color: '#16a34a' },
+          { label: 'Mes kilomètres', value: `${myKm} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
+          { label: 'Total communauté', value: `${totalKm} km`, sub: `${members.length} athlètes`, color: '#1e3a8a' },
+          { label: 'Moyenne par membre', value: `${avgKm} km`, sub: 'tous membres', color: '#16a34a' },
         ].map(card => (
           <div key={card.label} style={{
-            background: '#fff', borderRadius: '14px',
-            border: '1px solid #e8edf5', padding: '1.25rem 1.5rem',
-            borderTop: `3px solid ${card.color}`,
+            background: '#fff', borderRadius: '14px', border: '1px solid #e8edf5',
+            padding: '1.25rem 1.5rem', borderTop: `3px solid ${card.color}`,
             boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
           }}>
             <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
               {card.label}
             </p>
-            <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+            <p style={{ fontFamily: 'Poppins, serif', fontSize: '30px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
               {card.value}
             </p>
             <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{card.sub}</p>
@@ -130,94 +84,91 @@ export default function Progression() {
         ))}
       </div>
 
-      {/* Graphique collectif */}
+      {/* Mes paliers */}
       <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', padding: '1.75rem',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)', marginBottom: '1.5rem',
+        background: '#fff', borderRadius: '16px', border: '1px solid #e8edf5',
+        padding: '1.75rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
-            Km cumulés — Tour du monde
-          </p>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-            Progression collective depuis le lancement du challenge
-          </p>
+        <p style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+          Mes paliers
+        </p>
+        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '1.5rem' }}>
+          {nextPalier
+            ? `Plus que ${nextPalier.km - myKm} km pour atteindre "${nextPalier.label}" ${nextPalier.icon}`
+            : 'Tu as franchi tous les paliers ! 👑'}
+        </p>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {PALIERS.map(palier => {
+            const reached = myKm >= palier.km
+            return (
+              <div key={palier.km} style={{
+                flex: 1, textAlign: 'center', padding: '1rem 0.5rem',
+                borderRadius: '12px',
+                background: reached ? '#f0fdf4' : '#f8f9fb',
+                border: `1px solid ${reached ? '#bbf7d0' : '#e8edf5'}`,
+                opacity: reached ? 1 : 0.6,
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '6px', filter: reached ? 'none' : 'grayscale(1)' }}>
+                  {palier.icon}
+                </div>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: reached ? '#14532d' : '#94a3b8' }}>
+                  {palier.km} km
+                </p>
+                <p style={{ fontSize: '11px', color: reached ? '#16a34a' : '#94a3b8', marginTop: '2px' }}>
+                  {palier.label}
+                </p>
+                {reached && <p style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>✓ Atteint</p>}
+              </div>
+            )
+          })}
         </div>
-        {collective.length > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={collective} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorKm" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone" dataKey="km" name="Km collectifs"
-                stroke="#1e3a8a" strokeWidth={2.5}
-                fill="url(#colorKm)"
-                dot={{ fill: '#1e3a8a', r: 4, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: '#e67e22' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>Aucune donnée disponible</p>
-          </div>
-        )}
       </div>
 
-      {/* Graphique par membre */}
+      {/* Progression des membres */}
       <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', padding: '1.75rem',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)', marginBottom: '1.5rem',
+        background: '#fff', borderRadius: '16px', border: '1px solid #e8edf5',
+        padding: '1.75rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
-            Progression individuelle — Top 5
-          </p>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-            Évolution des km cumulés par athlète
-          </p>
-        </div>
-        {byMember.length > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={byMember} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: '12px', paddingTop: '1rem' }}
-                formatter={(value) => <span style={{ color: '#475569', fontWeight: 600 }}>{value}</span>}
-              />
-              {top5.map((m, i) => (
-                <Line
-                  key={m._id}
-                  type="monotone"
-                  dataKey={m.name.split(' ')[0]}
-                  stroke={MEMBER_COLORS[i]}
-                  strokeWidth={2}
-                  dot={{ fill: MEMBER_COLORS[i], r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>Aucune donnée disponible</p>
-          </div>
-        )}
-      </div>
+        <p style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+          Progression des membres
+        </p>
+        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '1.5rem' }}>
+          Kilomètres cumulés par chaque athlète
+        </p>
 
+        {members.map((m, i) => {
+          const barWidth = Math.round((m.totalKm / maxKm) * 100)
+          const isMe = m._id === currentMember.id
+          return (
+            <div key={m._id} style={{ marginBottom: i < members.length - 1 ? '1.25rem' : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: COLORS[i % 10], color: TEXT_COLORS[i % 10],
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                }}>
+                  {m.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <span style={{ flex: 1, fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
+                  {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: isMe ? '#e67e22' : '#1e3a8a' }}>
+                  {m.totalKm} km
+                </span>
+              </div>
+              <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '8px', overflow: 'hidden', marginLeft: '44px' }}>
+                <div style={{
+                  height: '100%', width: `${barWidth}%`,
+                  background: isMe ? '#e67e22' : '#1e3a8a',
+                  borderRadius: '99px', transition: 'width 0.6s ease',
+                }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

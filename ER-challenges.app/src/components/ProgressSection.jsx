@@ -14,7 +14,7 @@ export default function ProgressSection({ totalKm, goalKm }) {
   return (
     <div className="box mb-5">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
+        <p style={{ fontFamily: 'Poppins, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
           Tour du monde — progression
         </p>
         <span style={{ fontSize: '13px', color: '#64748b' }}>

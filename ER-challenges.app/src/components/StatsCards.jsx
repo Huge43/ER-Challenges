@@ -14,7 +14,7 @@ export default function StatsCards({ data }) {
         <div key={card.label} className="column">
           <div className="box" style={{ borderTop: `3px solid ${card.accent}`, padding: '1.25rem 1.5rem' }}>
             <p className="heading">{card.label}</p>
-            <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1.1 }}>
+            <p style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1.1 }}>
               {card.value}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>{card.sub}</p>

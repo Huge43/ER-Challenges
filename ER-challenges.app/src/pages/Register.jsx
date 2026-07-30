@@ -66,13 +66,13 @@ export default function Register() {
         }}>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <p style={{
-              fontFamily: 'EB Garamond, serif', fontSize: '15px', fontWeight: 600,
+              fontFamily: 'Poppins, serif', fontSize: '15px', fontWeight: 600,
               color: '#fff', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '3rem',
             }}>
               Elite Runners
             </p>
             <p style={{
-              fontFamily: 'EB Garamond, serif', fontSize: '42px',
+              fontFamily: 'Poppins, serif', fontSize: '42px',
               fontStyle: 'italic', fontWeight: 500, color: '#fff', lineHeight: 1.15, marginBottom: '1.25rem',
             }}>
               Rejoignez l'élite.
@@ -105,7 +105,7 @@ export default function Register() {
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
           <h1 style={{
-            fontFamily: 'EB Garamond, serif', fontSize: '36px',
+            fontFamily: 'Poppins, serif', fontSize: '36px',
             fontWeight: 600, color: '#1e2a4a', marginBottom: '8px',
           }}>
             Créer un compte

@@ -115,7 +115,7 @@ export default function Challenges() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Challenges
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
@@ -188,7 +188,7 @@ export default function Challenges() {
                   </span>
                 </div>
 
-                <h3 style={{ fontFamily: 'EB Garamond, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
                   {c.name}
                 </h3>
                 <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1.25rem', minHeight: '40px' }}>
@@ -246,7 +246,7 @@ export default function Challenges() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
+              <h2 style={{ fontFamily: 'Poppins, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
                 Créer un challenge
               </h2>
               <button onClick={() => { setShowModal(false); setError('') }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>

@@ -64,7 +64,7 @@ export default function Login() {
 
           <div style={{ position: 'relative', zIndex: 1 }}>
             <p style={{
-              fontFamily: 'EB Garamond, serif',
+              fontFamily: 'Poppins, serif',
               fontSize: '15px',
               fontWeight: 600,
               color: '#fff',
@@ -75,7 +75,7 @@ export default function Login() {
               Elite Runners
             </p>
             <p style={{
-              fontFamily: 'EB Garamond, serif',
+              fontFamily: 'Poppins, serif',
               fontSize: '42px',
               fontStyle: 'italic',
               fontWeight: 500,
@@ -127,7 +127,7 @@ export default function Login() {
           justifyContent: 'center',
         }}>
           <h1 style={{
-            fontFamily: 'EB Garamond, serif',
+            fontFamily: 'Poppins, serif',
             fontSize: '38px',
             fontWeight: 600,
             color: '#1e2a4a',

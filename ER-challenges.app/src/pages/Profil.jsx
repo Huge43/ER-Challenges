@@ -62,7 +62,7 @@ export default function Profil() {
           {member.name.split(' ').map(n => n[0]).join('')}
         </div>
         <div>
-          <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '34px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
+          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '34px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
             {member.name}
           </h1>
           <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '10px' }}>
@@ -101,7 +101,7 @@ export default function Profil() {
             <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
               {card.label}
             </p>
-            <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+            <p style={{ fontFamily: 'Poppins, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
               {card.value}
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function Profil() {
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-          <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
+          <p style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
             Historique des courses
           </p>
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>

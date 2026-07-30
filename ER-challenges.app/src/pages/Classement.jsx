@@ -33,7 +33,7 @@ export default function Classement() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Classement
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
@@ -49,7 +49,7 @@ export default function Classement() {
             <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
               Mon rang
             </p>
-            <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+            <p style={{ fontFamily: 'Poppins, serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
               #{myRank}
             </p>
           </div>
@@ -82,7 +82,7 @@ export default function Classement() {
               {m.name}
             </p>
             <p style={{
-              fontSize: '22px', fontFamily: 'EB Garamond, serif', fontWeight: 600,
+              fontSize: '22px', fontFamily: 'Poppins, serif', fontWeight: 600,
               color: i === 0 ? '#e67e22' : '#1e3a8a',
             }}>
               {m.totalKm} km
@@ -98,7 +98,7 @@ export default function Classement() {
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-          <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
+          <p style={{ fontFamily: 'Poppins, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
             Tous les athlètes
           </p>
         </div>

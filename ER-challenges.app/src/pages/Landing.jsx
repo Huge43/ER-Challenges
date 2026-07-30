@@ -11,7 +11,7 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '1.5rem 3rem', maxWidth: '1200px', margin: '0 auto',
       }}>
-        <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '22px', fontWeight: 600, letterSpacing: '0.1em' }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, letterSpacing: '0.1em', color: '#fff' }}>
           ELITE RUNNERS
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -44,8 +44,8 @@ export default function Landing() {
           La plateforme de challenges de course
         </span>
         <h1 style={{
-          fontFamily: 'EB Garamond, serif', fontSize: '64px', fontWeight: 600,
-          lineHeight: 1.1, marginBottom: '1.5rem',
+          fontFamily: 'Poppins, sans-serif', fontSize: '64px', fontWeight: 700,
+          lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff',
         }}>
           Dominez la piste,<br /><span style={{ fontStyle: 'italic', color: '#e67e22' }}>ensemble.</span>
         </h1>
@@ -77,8 +77,8 @@ export default function Landing() {
       {/* Comment ça marche */}
       <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem' }}>
         <p style={{
-          textAlign: 'center', fontFamily: 'EB Garamond, serif',
-          fontSize: '32px', fontWeight: 600, marginBottom: '3rem',
+          textAlign: 'center', fontFamily: 'Poppins, sans-serif',
+          fontSize: '32px', fontWeight: 700, marginBottom: '3rem', color: '#fff',
         }}>
           Comment ça marche
         </p>
@@ -96,13 +96,13 @@ export default function Landing() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <span style={{ fontSize: '32px' }}>{step.icon}</span>
                 <span style={{
-                  fontFamily: 'EB Garamond, serif', fontSize: '28px',
-                  color: 'rgba(230,126,34,0.4)', fontWeight: 600,
+                  fontFamily: 'Poppins, sans-serif', fontSize: '28px',
+                  color: 'rgba(230,126,34,0.5)', fontWeight: 700,
                 }}>
                   {step.num}
                 </span>
               </div>
-              <h3 style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>
+              <h3 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, marginBottom: '8px', color: '#fff' }}>
                 {step.title}
               </h3>
               <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
@@ -134,7 +134,7 @@ export default function Landing() {
                 {feat.icon}
               </div>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>{feat.title}</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: '#fff' }}>{feat.title}</h3>
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>{feat.desc}</p>
               </div>
             </div>
@@ -144,12 +144,12 @@ export default function Landing() {
 
       {/* CTA final */}
       <section style={{
-        maxWidth: '800px', margin: '3rem auto', padding: '3.5rem 3rem',
+        maxWidth: '800px',
         textAlign: 'center',
         background: 'linear-gradient(135deg, rgba(230,126,34,0.15) 0%, rgba(21,83,45,0.15) 100%)',
-        borderRadius: '24px', margin: '3rem 3rem',
+        borderRadius: '24px', margin: '3rem auto', padding: '3.5rem 3rem',
       }}>
-        <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '40px', fontWeight: 600, marginBottom: '1rem' }}>
+        <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '40px', fontWeight: 700, marginBottom: '1rem', color: '#fff' }}>
           Prêt à repousser vos limites ?
         </h2>
         <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)', marginBottom: '2rem' }}>
@@ -169,7 +169,7 @@ export default function Landing() {
         padding: '2rem 3rem', maxWidth: '1200px', margin: '0 auto',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '16px', fontWeight: 600, letterSpacing: '0.08em' }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '16px', fontWeight: 600, letterSpacing: '0.08em', color: '#fff' }}>
           ELITE RUNNERS
         </p>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>

@@ -12,7 +12,7 @@ export default function RecentActivity({ runs }) {
   return (
     <div className="box">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>Activité récente</p>
+        <p style={{ fontFamily: 'Poppins, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>Activité récente</p>
         <span style={{ fontSize: '12px', color: '#64748b' }}>Derniers runs</span>
       </div>
       {runs?.map((run, i) => (

@@ -5,14 +5,32 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Poppins', sans-serif;
   background: #f8f9fb;
   color: #1e2a4a;
 }
 
 h1, h2, h3, .title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Poppins', sans-serif;
   color: #1e2a4a;
+}
+
+/* Icônes Material Symbols */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
 }
 
 .box {

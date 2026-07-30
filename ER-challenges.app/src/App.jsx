@@ -11,12 +11,20 @@ import Challenges from './pages/Challenges'
 import Profil from './pages/Profil'
 import Landing from './pages/Landing'
 import ProtectedRoute from './components/ProtectedRoute'
+import useIsMobile from './hooks/useIsMobile'
 
 function Layout({ children }) {
+  const isMobile = useIsMobile()
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <main style={{ flex: 1, background: '#f8f9fb', padding: '2rem', overflowY: 'auto' }}>
+      <main style={{
+        flex: 1, background: '#f8f9fb',
+        padding: isMobile ? '1rem' : '2rem',
+        paddingTop: isMobile ? '72px' : '2rem',
+        overflowY: 'auto',
+        width: '100%',
+      }}>
         {children}
       </main>
     </div>

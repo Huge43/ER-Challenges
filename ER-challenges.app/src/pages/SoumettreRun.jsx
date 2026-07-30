@@ -66,7 +66,7 @@ export default function SoumettreRun() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '1rem' }}>🎉</div>
-        <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
+        <h2 style={{ fontFamily: 'Poppins, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
           Course soumise !
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b' }}>
@@ -81,7 +81,7 @@ export default function SoumettreRun() {
 
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+        <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
           Soumettre une course
         </h1>
         <p style={{ fontSize: '14px', color: '#64748b' }}>

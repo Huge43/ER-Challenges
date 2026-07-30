@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { getDashboard } from '../api/index.js'
+import useIsMobile from '../hooks/useIsMobile'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [activeChallenge, setActiveChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     Promise.all([
@@ -59,9 +61,9 @@ export default function Dashboard() {
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'EB Garamond, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Dashboard
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '420px', lineHeight: 1.6 }}>
@@ -70,19 +72,19 @@ export default function Dashboard() {
         </div>
         <div style={{
           background: '#fff', border: '1px solid #e8edf5', borderRadius: '12px',
-          padding: '1rem 1.5rem', textAlign: 'right', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          padding: '1rem 1.5rem', textAlign: isMobile ? 'left' : 'right', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
         }}>
           <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
             Membres actifs
           </p>
-          <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+          <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
             {data.activeMembers}
           </p>
         </div>
       </div>
 
       {/* Challenge actif + Top contributeurs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.25rem', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: '1.25rem', marginBottom: '2.5rem' }}>
 
         {/* Challenge actif */}
         <div style={{
@@ -99,7 +101,7 @@ export default function Dashboard() {
               }}>
                 {TYPES[active.type]?.icon} Challenge actif
               </span>
-              <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
+              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '24px' : '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
                 {active.name}
               </h2>
               <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.6 }}>
@@ -134,7 +136,7 @@ export default function Dashboard() {
                 <p style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
                   {active.currentKm?.toLocaleString()} / {active.goalKm?.toLocaleString()} km
                 </p>
-                <p style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#14532d' }}>
+                <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#14532d' }}>
                   {activePct}%
                 </p>
               </div>
@@ -206,14 +208,14 @@ export default function Dashboard() {
       {/* Tous les challenges */}
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
+          <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '20px' : '24px', fontWeight: 600, color: '#1e2a4a' }}>
             Tous les challenges
           </h2>
           <button onClick={() => navigate('/challenges')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: '13px', color: '#1e3a8a', fontWeight: 600,
           }}>
-            Gérer les challenges →
+            {isMobile ? 'Gérer →' : 'Gérer les challenges →'}
           </button>
         </div>
 
@@ -226,7 +228,7 @@ export default function Dashboard() {
             <p style={{ fontSize: '14px', color: '#64748b' }}>Aucun challenge pour le moment.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem' }}>
             {challenges.map(c => {
               const status = getStatus(c)
               const typeInfo = TYPES[c.type] || TYPES.distance
@@ -253,7 +255,7 @@ export default function Dashboard() {
                     </span>
                   </div>
 
-                  <h3 style={{ fontFamily: 'EB Garamond, serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+                  <h3 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
                     {c.name}
                   </h3>
                   <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1rem', minHeight: '38px' }}>
