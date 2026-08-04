@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../api/index.js'
 
 export default function SoumettreRun() {
   const [form, setForm] = useState({ km: '', note: '', date: new Date().toISOString().split('T')[0] })
@@ -14,7 +14,7 @@ export default function SoumettreRun() {
   const isStreak = challenge?.type === 'streak'
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/challenges/active')
+    axios.get('http://192.168.2.37:5000/api/challenges/active')
       .then(res => setChallenge(res.data))
       .catch(err => console.error(err))
   }, [])
@@ -31,7 +31,7 @@ export default function SoumettreRun() {
     }
     setLoading(true)
     try {
-      await axios.post('http://localhost:5000/api/runs', {
+      await axios.post('http://192.168.2.37:5000/api/runs', {
         member: member.id,
         challenge: challenge._id,
         km: isStreak ? Number(form.km || 0) : Number(form.km),
@@ -128,32 +128,32 @@ export default function SoumettreRun() {
           </div>
         )}
 
-        {/* Distance */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={labelStyle}>
-            Distance (km) {isStreak && <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel pour un streak)</span>}
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="number"
-              placeholder="Ex: 10.5"
-              min="0"
-              step="0.1"
-              value={form.km}
-              onChange={e => setForm({ ...form, km: e.target.value })}
-              style={{ ...inputStyle, paddingRight: '50px' }}
-              onFocus={e => e.target.style.borderColor = '#e67e22'}
-              onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-            />
-            <span style={{
-              position: 'absolute', right: '14px', top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '13px', fontWeight: 600, color: '#94a3b8',
-            }}>
-              km
-            </span>
+        {/* Distance — seulement pour les challenges distance */}
+        {!isStreak && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={labelStyle}>Distance (km)</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                placeholder="Ex: 10.5"
+                min="0"
+                step="0.1"
+                value={form.km}
+                onChange={e => setForm({ ...form, km: e.target.value })}
+                style={{ ...inputStyle, paddingRight: '50px' }}
+                onFocus={e => e.target.style.borderColor = '#e67e22'}
+                onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+              />
+              <span style={{
+                position: 'absolute', right: '14px', top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '13px', fontWeight: 600, color: '#94a3b8',
+              }}>
+                km
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Date */}
         <div style={{ marginBottom: '1.5rem' }}>

@@ -9,7 +9,7 @@ const links = [
   { to: '/progression', label: 'Progression', icon: 'trending_up' },
   { to: '/membres', label: 'Membres', icon: 'group' },
   { to: '/profil', label: 'Mon profil', icon: 'person' },
-  { to: '/soumettre', label: 'Soumettre une course', icon: 'add_circle' },
+  { to: '/soumettre', label: 'Soumettre une activité', icon: 'add_circle' },
 ]
 
 export default function Sidebar() {

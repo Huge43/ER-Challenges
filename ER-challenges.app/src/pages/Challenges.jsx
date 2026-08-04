@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
 
 const TYPES = {
@@ -28,12 +28,12 @@ export default function Challenges() {
   const isMobile = useIsMobile()
 
   const fetchChallenges = () => {
-    axios.get('http://localhost:5000/api/challenges')
+    axios.get('http://192.168.2.37:5000/api/challenges')
       .then(res => {
         setChallenges(res.data)
         // Pour chaque challenge streak, récupérer son calcul de streak
         res.data.filter(c => c.type === 'streak').forEach(c => {
-          axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
+          axios.get(`http://192.168.2.37:5000/api/challenges/${c._id}/streak`)
             .then(streakRes => setStreaks(prev => ({ ...prev, [c._id]: streakRes.data })))
             .catch(err => console.error(err))
         })
@@ -74,7 +74,7 @@ export default function Challenges() {
         payload.goalDays = Number(form.goalDays)
         payload.scope = form.scope
       }
-      await axios.post('http://localhost:5000/api/challenges', payload, {
+      await axios.post('http://192.168.2.37:5000/api/challenges', payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge créé avec succès !')
@@ -89,7 +89,7 @@ export default function Challenges() {
 
   const handleActivate = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/challenges/${id}/activate`, {}, {
+      await axios.put(`http://192.168.2.37:5000/api/challenges/${id}/activate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge activé !')
@@ -103,7 +103,7 @@ export default function Challenges() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Supprimer le challenge "${name}" ?`)) return
     try {
-      await axios.delete(`http://localhost:5000/api/challenges/${id}`, {
+      await axios.delete(`http://192.168.2.37:5000/api/challenges/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge supprimé.')

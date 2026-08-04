@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
 
 export default function Profil() {
@@ -11,8 +11,8 @@ export default function Profil() {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/members'),
-      axios.get(`http://localhost:5000/api/runs/member/${currentMember.id}`),
+      axios.get('http://192.168.2.37:5000/api/members'),
+      axios.get(`http://192.168.2.37:5000/api/runs/member/${currentMember.id}`),
     ]).then(([membersRes, runsRes]) => {
       const me = membersRes.data.find(m => m._id === currentMember.id)
       setMember(me)
@@ -33,9 +33,10 @@ export default function Profil() {
     </div>
   )
 
-  const totalRuns = runs.length
+  const totalActivities = runs.length
   const totalKm = runs.reduce((sum, r) => sum + r.km, 0)
-  const avgKm = totalRuns ? (totalKm / totalRuns).toFixed(1) : 0
+  const runsWithKm = runs.filter(r => r.km > 0)
+  const avgKm = runsWithKm.length ? (totalKm / runsWithKm.length).toFixed(1) : 0
   const longestRun = runs.reduce((max, r) => Math.max(max, r.km), 0)
 
   const timeAgo = (date) => {
@@ -50,12 +51,12 @@ export default function Profil() {
 
       {/* Header profil */}
       <div style={{
-         background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 100%)',
-  borderRadius: '20px', padding: isMobile ? '1.75rem' : '2.5rem', marginBottom: '2rem',
-  display: 'flex', flexDirection: isMobile ? 'column' : 'row',
-  alignItems: isMobile ? 'flex-start' : 'center', gap: '1.5rem',
-  position: 'relative', overflow: 'hidden',
-}}>
+        background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 100%)',
+        borderRadius: '20px', padding: isMobile ? '1.75rem' : '2.5rem', marginBottom: '2rem',
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'flex-start' : 'center', gap: '1.5rem',
+        position: 'relative', overflow: 'hidden',
+      }}>
         <div style={{
           width: '90px', height: '90px', borderRadius: '50%',
           background: '#e67e22', display: 'flex', alignItems: 'center',
@@ -65,7 +66,7 @@ export default function Profil() {
           {member.name.split(' ').map(n => n[0]).join('')}
         </div>
         <div>
-          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '34px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
+          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '34px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
             {member.name}
           </h1>
           <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '10px' }}>
@@ -91,9 +92,9 @@ export default function Profil() {
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
           { label: 'Km totaux', value: member.totalKm, color: '#1e3a8a' },
-          { label: 'Courses', value: totalRuns, color: '#e67e22' },
-          { label: 'Moyenne / run', value: `${avgKm} km`, color: '#16a34a' },
-          { label: 'Plus long run', value: `${longestRun} km`, color: '#9333ea' },
+          { label: 'Activités', value: totalActivities, color: '#e67e22' },
+          { label: 'Moyenne / activité', value: `${avgKm} km`, color: '#16a34a' },
+          { label: 'Plus longue', value: `${longestRun} km`, color: '#9333ea' },
         ].map(card => (
           <div key={card.label} style={{
             background: '#fff', borderRadius: '14px',
@@ -104,65 +105,70 @@ export default function Profil() {
             <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
               {card.label}
             </p>
-            <p style={{ fontFamily: 'Poppins, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
               {card.value}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Historique des runs */}
+      {/* Historique des activités */}
       <div style={{
         background: '#fff', borderRadius: '16px',
         border: '1px solid #e8edf5', overflow: 'hidden',
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-          <p style={{ fontFamily: 'Poppins, serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
-            Historique des courses
+          <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
+            Historique des activités
           </p>
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-            {totalRuns} course{totalRuns > 1 ? 's' : ''} enregistrée{totalRuns > 1 ? 's' : ''}
+            {totalActivities} activité{totalActivities > 1 ? 's' : ''} enregistrée{totalActivities > 1 ? 's' : ''}
           </p>
         </div>
 
         {runs.length === 0 ? (
           <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '10px' }}>🏃</div>
-            <p style={{ fontSize: '14px', color: '#64748b' }}>Aucune course enregistrée pour l'instant.</p>
+            <p style={{ fontSize: '14px', color: '#64748b' }}>Aucune activité enregistrée pour l'instant.</p>
           </div>
         ) : (
           <div>
-            {runs.map((run, i) => (
-              <div key={run._id} style={{
-                display: 'flex', alignItems: 'center', gap: '14px',
-                padding: '1rem 1.5rem',
-                borderTop: i > 0 ? '1px solid #f1f5f9' : 'none',
-              }}>
-                <div style={{
-                  width: '42px', height: '42px', borderRadius: '10px',
-                  background: '#eff6ff', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '18px', flexShrink: 0,
+            {runs.map((run, i) => {
+              const isValidation = run.km === 0
+              return (
+                <div key={run._id} style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '1rem 1.5rem',
+                  borderTop: i > 0 ? '1px solid #f1f5f9' : 'none',
                 }}>
-                  🏃
+                  <div style={{
+                    width: '42px', height: '42px', borderRadius: '10px',
+                    background: isValidation ? '#fff7ed' : '#eff6ff',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: '18px', flexShrink: 0,
+                  }}>
+                    {isValidation ? '🔥' : '🏃'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
+                      {run.note || (isValidation ? 'Journée validée' : 'Activité')}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                      {run.challenge?.name || 'Challenge'} · {new Date(run.date).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
+                    </p>
+                  </div>
+                  <span style={{
+                    padding: '6px 14px', borderRadius: '8px',
+                    background: isValidation ? '#fff7ed' : '#dcfce7',
+                    color: isValidation ? '#e67e22' : '#14532d',
+                    fontSize: '14px', fontWeight: 700,
+                  }}>
+                    {isValidation ? '✓ Validée' : `${run.km} km`}
+                  </span>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                    {run.note || 'Course'}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                    {run.challenge?.name || 'Challenge'} · {new Date(run.date).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
-                  </p>
-                </div>
-                <span style={{
-                  padding: '6px 14px', borderRadius: '8px',
-                  background: '#dcfce7', color: '#14532d',
-                  fontSize: '14px', fontWeight: 700,
-                }}>
-                  {run.km} km
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

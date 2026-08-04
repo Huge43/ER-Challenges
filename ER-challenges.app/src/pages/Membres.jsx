@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe','#e0e7ff','#fce7f3','#dcfce7','#fef3c7','#fee2e2','#f3e8ff','#e0f2fe','#f0fdf4','#fdf4ff']
@@ -7,6 +7,7 @@ const TEXT_COLORS = ['#1e3a8a','#3730a3','#9d174d','#14532d','#92400e','#991b1b'
 
 export default function Membres() {
   const [members, setMembers] = useState([])
+  const [streaks, setStreaks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'member' })
@@ -18,9 +19,13 @@ export default function Membres() {
   const isMobile = useIsMobile()
 
   const fetchMembers = () => {
-    axios.get('http://localhost:5000/api/members')
-      .then(res => setMembers(res.data))
-      .catch(err => console.error(err))
+    Promise.all([
+      axios.get('http://192.168.2.37:5000/api/members'),
+      axios.get('http://192.168.2.37:5000/api/members/streaks'),
+    ]).then(([membersRes, streaksRes]) => {
+      setMembers(membersRes.data)
+      setStreaks(streaksRes.data)
+    }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }
 
@@ -30,7 +35,7 @@ export default function Membres() {
     setError('')
     if (!form.name || !form.email) { setError('Nom et email requis.'); return }
     try {
-      await axios.post('http://localhost:5000/api/members', form, {
+      await axios.post('http://192.168.2.37:5000/api/members', form, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Membre ajouté avec succès !')
@@ -46,7 +51,7 @@ export default function Membres() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Retirer ${name} de la communauté ?`)) return
     try {
-      await axios.delete(`http://localhost:5000/api/members/${id}`, {
+      await axios.delete(`http://192.168.2.37:5000/api/members/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess(`${name} a été retiré.`)
@@ -59,7 +64,7 @@ export default function Membres() {
 
   const handleRoleChange = async (id, newRole) => {
     try {
-      await axios.put(`http://localhost:5000/api/members/${id}/role`,
+      await axios.put(`http://192.168.2.37:5000/api/members/${id}/role`,
         { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -90,7 +95,7 @@ export default function Membres() {
       {/* Header */}
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
             Membres
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
@@ -134,16 +139,17 @@ export default function Membres() {
 
       {/* Tableau membres */}
       <div style={{
-  background: '#fff', borderRadius: '16px',
-  border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-}}>
-        <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
+        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f8f9fb' }}>
               <th style={{ padding: '14px 1.5rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Athlète</th>
               <th style={{ padding: '14px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Rôle</th>
               <th style={{ padding: '14px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Total km</th>
+              <th style={{ padding: '14px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Meilleur streak</th>
               <th style={{ padding: '14px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Membre depuis</th>
               {isAdmin && (
                 <th style={{ padding: '14px 1.5rem', textAlign: 'right', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Actions</th>
@@ -153,6 +159,8 @@ export default function Membres() {
           <tbody>
             {members.map((m, i) => {
               const isMe = m._id === currentMember.id
+              const streakData = streaks.find(s => s._id === m._id)
+              const longest = streakData?.longest || 0
               return (
                 <tr key={m._id} style={{
                   borderTop: '1px solid #f1f5f9',
@@ -215,6 +223,16 @@ export default function Membres() {
                     </span>
                   </td>
                   <td style={{ padding: '14px 1rem' }}>
+                    <span style={{
+                      display: 'inline-block', padding: '4px 12px',
+                      background: longest > 0 ? '#fff7ed' : '#f1f5f9',
+                      color: longest > 0 ? '#e67e22' : '#94a3b8',
+                      borderRadius: '6px', fontSize: '13px', fontWeight: 700,
+                    }}>
+                      {longest} {longest > 1 ? 'jours' : 'jour'} {longest > 0 && '🔥'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 1rem' }}>
                     <p style={{ fontSize: '13px', color: '#64748b' }}>
                       {new Date(m.createdAt).toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </p>
@@ -257,7 +275,7 @@ export default function Membres() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'Poppins, serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
+              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
                 Ajouter un membre
               </h2>
               <button onClick={() => { setShowModal(false); setError('') }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
