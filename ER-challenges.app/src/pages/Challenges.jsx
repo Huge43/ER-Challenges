@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 import useIsMobile from '../hooks/useIsMobile'
 
 const TYPES = {

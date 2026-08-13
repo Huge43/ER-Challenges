@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 
 export default function SoumettreRun() {
   const [form, setForm] = useState({ km: '', note: '', date: new Date().toISOString().split('T')[0] })

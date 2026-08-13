@@ -1,9 +1,7 @@
-import api from '../api/index.js'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+import axios from 'axios'
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'http://localhost:5000/api',
 })
 
 export const getDashboard = () => api.get('/dashboard')

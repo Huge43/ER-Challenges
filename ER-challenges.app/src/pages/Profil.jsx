@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../api/index.js'
+import axios from 'axios'
 import useIsMobile from '../hooks/useIsMobile'
 
 export default function Profil() {

@@ -16,7 +16,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const res = await axios.post('http://192.168.2.37:5000/api/auth/login', form)
+      const res = await api.post('/auth/login', form)
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('member', JSON.stringify(res.data.member))
       navigate('/dashboard')
@@ -87,7 +87,7 @@ export default function Login() {
               lineHeight: 1.15,
               marginBottom: '1.25rem',
             }}>
-              Dominez la piste.
+              Dépassons nous ensemble.
             </p>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
               Accédez à vos données de performance et repoussez vos limites avec votre communauté.
@@ -138,7 +138,7 @@ export default function Login() {
             color: '#1e2a4a',
             marginBottom: '8px',
           }}>
-            Bon retour, Athlète
+            Bon retour.
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '2.5rem' }}>
             Entrez vos identifiants pour continuer votre préparation.
