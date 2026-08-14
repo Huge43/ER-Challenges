@@ -12,11 +12,13 @@ export default function SoumettreRun() {
   const member = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isStreak = challenge?.type === 'streak'
+  const [loadingChallenge, setLoadingChallenge] = useState(true)
 
   useEffect(() => {
-    axios.get('http://192.168.2.37:5000/api/challenges/active')
+    axios.get('http://localhost:5000/api/challenges/active')
       .then(res => setChallenge(res.data))
       .catch(err => console.error(err))
+      .finally(() => setLoadingChallenge(false))
   }, [])
 
   const handleSubmit = async () => {
@@ -72,6 +74,36 @@ export default function SoumettreRun() {
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b' }}>
           {isStreak ? 'Ton streak continue. Redirection...' : 'Tes km ont été ajoutés au challenge. Redirection...'}
+        </p>
+      </div>
+    </div>
+  )
+
+  if (loadingChallenge) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <p style={{ color: '#64748b', fontSize: '14px' }}>Chargement...</p>
+    </div>
+  )
+
+  // Aucun challenge actif (aucun activé, ou tous en pause/terminés)
+  if (!challenge) return (
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          Soumettre une activité
+        </h1>
+      </div>
+      <div style={{
+        background: '#fff', borderRadius: '16px', border: '2px dashed #e2e8f0',
+        padding: '3.5rem 2rem', textAlign: 'center',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ fontSize: '40px', marginBottom: '1rem' }}>⏸️</div>
+        <p style={{ fontSize: '16px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
+          Aucun challenge en cours
+        </p>
+        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6 }}>
+          Il n'y a pas de challenge actif pour le moment. Reviens quand un défi sera lancé pour enregistrer tes activités !
         </p>
       </div>
     </div>

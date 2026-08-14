@@ -123,7 +123,7 @@ export default function Progression() {
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {(isKm ? [
           { label: 'Mes kilomètres', value: `${myValue} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
-          { label: 'Total communauté', value: `${totalKm} km`, sub: `${members.length} athlètes`, color: '#1e3a8a' },
+          { label: 'Total communauté', value: `${totalKm} km`, sub: `${members.length} Elites`, color: '#1e3a8a' },
           { label: 'Moyenne par membre', value: `${avgKm} km`, sub: 'tous membres', color: '#16a34a' },
         ] : [
           { label: 'Mon streak actuel', value: `${myValue} jours ${myValue > 0 ? '🔥' : ''}`, sub: `Record perso : ${myRecord} jours`, color: '#e67e22' },
