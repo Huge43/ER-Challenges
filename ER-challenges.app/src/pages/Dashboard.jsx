@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 import { getDashboard } from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
 
@@ -25,8 +25,8 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       getDashboard(),
-      axios.get('http://192.168.2.37:5000/api/challenges'),
-      axios.get('http://192.168.2.37:5000/api/challenges/active'),
+      axios.get('http://localhost:5000/api/challenges'),
+      axios.get('http://localhost:5000/api/challenges/active'),
     ]).then(([dashRes, challRes, activeRes]) => {
       setData(dashRes.data)
       setChallenges(challRes.data)
@@ -34,7 +34,7 @@ export default function Dashboard() {
 
       // Charger les streaks pour tous les challenges de type streak
       challRes.data.filter(c => c.type === 'streak').forEach(c => {
-        axios.get(`http://192.168.2.37:5000/api/challenges/${c._id}/streak`)
+        axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
           .then(res => setStreaks(prev => ({ ...prev, [c._id]: res.data })))
           .catch(err => console.error(err))
       })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../api/index.js'
+import axios from 'axios'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
@@ -16,8 +16,8 @@ export default function Classement() {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://192.168.2.37:5000/api/members'),
-      axios.get('http://192.168.2.37:5000/api/members/streaks'),
+      axios.get('http://localhost:5000/api/members'),
+      axios.get('http://localhost:5000/api/members/streaks'),
     ]).then(([membersRes, streaksRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)

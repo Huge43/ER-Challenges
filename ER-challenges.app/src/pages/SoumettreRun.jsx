@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 
 export default function SoumettreRun() {
   const [form, setForm] = useState({ km: '', note: '', date: new Date().toISOString().split('T')[0] })
@@ -14,7 +14,7 @@ export default function SoumettreRun() {
   const isStreak = challenge?.type === 'streak'
 
   useEffect(() => {
-    axios.get('http://192.168.2.37:5000/api/challenges/active')
+    axios.get('http://localhost:5000/api/challenges/active')
       .then(res => setChallenge(res.data))
       .catch(err => console.error(err))
   }, [])
@@ -31,7 +31,7 @@ export default function SoumettreRun() {
     }
     setLoading(true)
     try {
-      await axios.post('http://192.168.2.37:5000/api/runs', {
+      await axios.post('http://localhost:5000/api/runs', {
         member: member.id,
         challenge: challenge._id,
         km: isStreak ? Number(form.km || 0) : Number(form.km),

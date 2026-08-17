@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 import useIsMobile from '../hooks/useIsMobile'
 
 export default function Login() {
@@ -16,7 +16,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const res = await axios.post('http://192.168.2.37:5000/api/auth/login', form)
+      const res = await axios.post('http://localhost:5000/api/auth/login', form)
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('member', JSON.stringify(res.data.member))
       navigate('/dashboard')
