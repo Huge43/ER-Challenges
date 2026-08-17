@@ -84,7 +84,7 @@ export default function Register() {
               Rejoignez l'élite.
             </p>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
-              Créez votre compte et commencez à contribuer au Tour du monde avec votre communauté.
+              Créez votre compte et participez à des challenges variés.
             </p>
           </div>
           <div style={{ position: 'relative', zIndex: 1 }}>
@@ -118,7 +118,7 @@ export default function Register() {
             Créer un compte
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '2rem' }}>
-            Rejoignez Elite Runners et contribuez au challenge.
+            Rejoignez Elite Runners et contribuez aux challenges.
           </p>
 
           {error && (

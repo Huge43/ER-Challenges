@@ -43,20 +43,20 @@ export default function Landing() {
           fontSize: '12px', fontWeight: 600, letterSpacing: '0.08em',
           textTransform: 'uppercase', marginBottom: '2rem',
         }}>
-          La plateforme de challenges de course
+          La plateforme de challenges de elte runners
         </span>
        <h1 style={{
   fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '38px' : '64px', fontWeight: 700,
   lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff',
 }}>
-          Dominez la piste,<br /><span style={{ fontStyle: 'italic', color: '#e67e22' }}>ensemble.</span>
+          Dépassez-vous,<br /><span style={{ fontStyle: 'italic', color: '#e67e22' }}>ensemble.</span>
         </h1>
         <p style={{
           fontSize: '18px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7,
           maxWidth: '580px', margin: '0 auto 2.5rem',
         }}>
-          Elite Runners réunit ta communauté autour de défis collectifs.
-          Cumulez vos kilomètres, grimpez le classement et repoussez vos limites — motivés les uns par les autres.
+          La communauté se réunit autour de défis collectifs.
+          Relevez des challenges, grimpez le classement et repoussez vos limites — motivés les uns par les autres.
         </p>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1rem', justifyContent: 'center' }}>
           <button onClick={() => navigate('/register')} style={{
@@ -87,7 +87,7 @@ export default function Landing() {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
           {[
             { num: '01', icon: '👥', title: 'Rejoins', desc: 'Crée ton compte et intègre la communauté Elite Runners en quelques secondes.' },
-            { num: '02', icon: '🏃', title: 'Cours', desc: 'Enregistre tes courses et ajoute tes kilomètres au challenge collectif du moment.' },
+            { num: '02', icon: '🏃', title: 'Participe', desc: 'Enregistre tes activités et progresse dans le challenge du moment avec la communauté.' },
             { num: '03', icon: '🏆', title: 'Progresse', desc: 'Grimpe le classement, franchis les étapes et atteins les objectifs avec ton groupe.' },
           ].map(step => (
             <div key={step.num} style={{
@@ -119,10 +119,10 @@ export default function Landing() {
       <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1.5rem' }}>
           {[
-            { icon: '🌍', title: 'Challenges collectifs', desc: 'Du Tour du monde aux défis mensuels, relevez des objectifs ambitieux en équipe.' },
+            { icon: '🌍', title: 'Challenges collectifs', desc: 'Des grands objectifs aux défis du quotidien, progressez ensemble vers un but commun.' },
             { icon: '📊', title: 'Suivi en temps réel', desc: 'Visualisez votre progression individuelle et collective avec des graphiques clairs.' },
             { icon: '🥇', title: 'Classement vivant', desc: 'Une saine compétition qui pousse chaque membre à donner le meilleur de lui-même.' },
-            { icon: '🔥', title: 'Motivation de groupe', desc: 'L\'énergie de la communauté transforme chaque course en accomplissement partagé.' },
+            { icon: '🔥', title: 'Motivation de groupe', desc: 'L\'énergie de la communauté transforme chaque challenge en accomplissement partagé.' },
           ].map(feat => (
             <div key={feat.title} style={{
               display: 'flex', gap: '16px', padding: '1.5rem',
@@ -155,7 +155,7 @@ export default function Landing() {
           Prêt à repousser vos limites ?
         </h2>
         <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)', marginBottom: '2rem' }}>
-          Rejoignez Elite Runners et transformez chaque course en victoire collective.
+          Rejoignez Elite Runners et transformez chaque défi en victoire collective.
         </p>
         <button onClick={() => navigate('/register')} style={{
           padding: '15px 36px', background: '#e67e22', color: '#fff',

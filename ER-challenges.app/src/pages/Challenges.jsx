@@ -15,6 +15,7 @@ export default function Challenges() {
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [tab, setTab] = useState('actifs')
   const [form, setForm] = useState({
     name: '', description: '', type: 'distance', icon: '🏃',
     goalKm: '', goalDays: '', scope: 'individuel',
@@ -31,7 +32,6 @@ export default function Challenges() {
     axios.get('http://localhost:5000/api/challenges')
       .then(res => {
         setChallenges(res.data)
-        // Pour chaque challenge streak, récupérer son calcul de streak
         res.data.filter(c => c.type === 'streak').forEach(c => {
           axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
             .then(streakRes => setStreaks(prev => ({ ...prev, [c._id]: streakRes.data })))
@@ -87,12 +87,56 @@ export default function Challenges() {
     }
   }
 
+  const handleRelaunch = (c) => {
+  setForm({
+    name: `${c.name} (nouvelle édition)`,
+    description: c.description || '',
+    type: c.type,
+    icon: c.icon,
+    goalKm: c.goalKm ? String(c.goalKm) : '',
+    goalDays: c.goalDays ? String(c.goalDays) : '',
+    scope: c.scope || 'individuel',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    active: false,
+  })
+  setError('')
+  setShowModal(true)
+}
+
   const handleActivate = async (id) => {
     try {
       await axios.put(`http://localhost:5000/api/challenges/${id}/activate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge activé !')
+      fetchChallenges()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
+  const handlePause = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/challenges/${id}/pause`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccess('Challenge mis en pause.')
+      fetchChallenges()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
+  const handleEnd = async (id, name) => {
+    if (!window.confirm(`Terminer le challenge "${name}" maintenant ? Cette action est définitive.`)) return
+    try {
+      await axios.put(`http://localhost:5000/api/challenges/${id}/end`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccess('Challenge terminé.')
       fetchChallenges()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -116,13 +160,14 @@ export default function Challenges() {
 
   const now = new Date()
   const getStatus = (c) => {
+    const start = new Date(c.startDate)
+    const end = new Date(c.endDate)
+    if (end < now) return { label: 'Terminé', color: '#f1f5f9', text: '#64748b' }
+    if (start > now) return { label: 'À venir', color: '#e0e7ff', text: '#3730a3' }
     if (c.active) return { label: 'Actif', color: '#dcfce7', text: '#14532d' }
-    if (new Date(c.startDate) > now) return { label: 'À venir', color: '#e0e7ff', text: '#3730a3' }
-    if (new Date(c.endDate) < now) return { label: 'Terminé', color: '#f1f5f9', text: '#64748b' }
-    return { label: 'Inactif', color: '#fef3c7', text: '#92400e' }
+    return { label: 'En pause', color: '#fef3c7', text: '#92400e' }
   }
 
-  // Renvoie les infos de progression selon le type de challenge
   const getProgress = (c) => {
     if (c.type === 'streak') {
       const streakData = streaks[c._id]
@@ -138,7 +183,6 @@ export default function Challenges() {
           label: `${streakData.current} / ${c.goalDays} jours (collectif)`,
         }
       } else {
-        // Individuel : on montre le meilleur streak actuel
         const best = streakData.members?.[0]
         const current = best?.current || 0
         const pct = c.goalDays ? Math.min(100, ((current / c.goalDays) * 100).toFixed(1)) : 0
@@ -180,6 +224,14 @@ export default function Challenges() {
     </div>
   )
 
+  const filteredChallenges = challenges.filter(c => {
+    const status = getStatus(c)
+    if (tab === 'actifs') return status.label === 'Actif' || status.label === 'En pause'
+    if (tab === 'avenir') return status.label === 'À venir'
+    if (tab === 'termines') return status.label === 'Terminé'
+    return true
+  })
+
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
@@ -207,6 +259,30 @@ export default function Challenges() {
         )}
       </div>
 
+      {/* Onglets */}
+      <div style={{
+        display: 'inline-flex', gap: '4px', background: '#f1f5f9',
+        padding: '4px', borderRadius: '12px', marginBottom: '1.5rem', flexWrap: 'wrap',
+      }}>
+        {[
+          { key: 'actifs', label: 'Actifs' },
+          { key: 'avenir', label: 'À venir' },
+          { key: 'termines', label: 'Terminés' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '9px 20px', borderRadius: '9px', border: 'none',
+            background: tab === t.key ? '#fff' : 'transparent',
+            color: tab === t.key ? '#1e2a4a' : '#64748b',
+            fontSize: '13px', fontWeight: tab === t.key ? 700 : 500,
+            cursor: 'pointer',
+            boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+            transition: 'all 0.15s',
+          }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Notifications */}
       {success && (
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#14532d', marginBottom: '1.5rem' }}>
@@ -220,25 +296,32 @@ export default function Challenges() {
       )}
 
       {/* Grille challenges */}
-      {challenges.length === 0 ? (
+      {filteredChallenges.length === 0 ? (
         <div style={{
           background: '#fff', borderRadius: '16px', border: '2px dashed #e2e8f0',
           padding: '4rem 2rem', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '1rem' }}>🏁</div>
-          <p style={{ fontSize: '15px', color: '#64748b' }}>Aucun challenge pour le moment.</p>
-          {isAdmin && <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>Créez le premier challenge de la communauté !</p>}
+          <div style={{ fontSize: '40px', marginBottom: '1rem' }}>
+            {tab === 'termines' ? '🏆' : tab === 'avenir' ? '📅' : '🏁'}
+          </div>
+          <p style={{ fontSize: '15px', color: '#64748b' }}>
+            {tab === 'actifs' ? 'Aucun challenge actif pour le moment.'
+              : tab === 'avenir' ? 'Aucun challenge à venir.'
+              : 'Aucun challenge terminé pour l\'instant.'}
+          </p>
+          {isAdmin && tab === 'actifs' && <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>Créez le premier challenge de la communauté !</p>}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem' }}>
-          {challenges.map(c => {
+          {filteredChallenges.map(c => {
             const status = getStatus(c)
             const typeInfo = TYPES[c.type] || TYPES.distance
             const progress = getProgress(c)
+            const isFinished = status.label === 'Terminé'
             return (
               <div key={c._id} style={{
                 background: '#fff', borderRadius: '16px',
-                border: c.active ? '2px solid #16a34a' : '1px solid #e8edf5',
+                border: c.active && !isFinished ? '2px solid #16a34a' : '1px solid #e8edf5',
                 padding: '1.5rem',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
               }}>
@@ -287,27 +370,91 @@ export default function Challenges() {
                   </div>
                 </div>
 
+                {/* Classement figé complet pour les challenges terminés */}
+                {c.resultsFrozen && c.results?.length > 0 && (
+                  <div style={{
+                    background: '#f8f9fb', borderRadius: '10px',
+                    padding: '1rem', marginBottom: '1rem',
+                  }}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
+                      🏆 Classement final
+                    </p>
+                    {c.results.map((r, idx) => (
+                      <div key={r.memberId || idx} style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '6px 0',
+                        borderBottom: idx < c.results.length - 1 ? '1px solid #eef1f6' : 'none',
+                      }}>
+                        <span style={{ fontSize: idx < 3 ? '16px' : '13px', width: '28px', color: '#64748b', fontWeight: 600 }}>
+                          {['🥇', '🥈', '🥉'][idx] || `#${idx + 1}`}
+                        </span>
+                        <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#1e2a4a' }}>
+                          {r.name}
+                        </span>
+                        <span style={{
+                          fontSize: '13px', fontWeight: 700,
+                          color: idx === 0 ? '#e67e22' : '#64748b',
+                        }}>
+                          {r.value} {c.type === 'streak' ? 'jours' : 'km'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: isAdmin ? '1rem' : 0 }}>
                   <span>📅 {new Date(c.startDate).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })} → {new Date(c.endDate).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })}</span>
                   <span>{c.participants?.length || 0} participants</span>
                 </div>
 
                 {isAdmin && (
-                  <div style={{ display: 'flex', gap: '8px', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
-                    {!c.active && (
-                      <button onClick={() => handleActivate(c._id)} style={{
-                        flex: 1, padding: '8px', background: '#dcfce7', color: '#14532d',
-                        border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                      }}>
-                        Activer
-                      </button>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+                    {isFinished ? (
+                      <>
+                        <button onClick={() => handleRelaunch(c)} style={{
+                          flex: 1, padding: '8px', background: '#dcfce7', color: '#14532d',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Relancer
+                        </button>
+                        <button onClick={() => handleDelete(c._id, c.name)} style={{
+                          padding: '8px 14px', background: '#fee2e2', color: '#991b1b',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Suppr.
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {c.active ? (
+                          <button onClick={() => handlePause(c._id)} style={{
+                            flex: 1, padding: '8px', background: '#fef3c7', color: '#92400e',
+                            border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}>
+                            Mettre en pause
+                          </button>
+                        ) : (
+                          <button onClick={() => handleActivate(c._id)} style={{
+                            flex: 1, padding: '8px', background: '#dcfce7', color: '#14532d',
+                            border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}>
+                            Activer
+                          </button>
+                        )}
+                        <button onClick={() => handleEnd(c._id, c.name)} style={{
+                          flex: 1, padding: '8px', background: '#fff7ed', color: '#e67e22',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Terminer
+                        </button>
+                        <button onClick={() => handleDelete(c._id, c.name)} style={{
+                          padding: '8px 14px', background: '#fee2e2', color: '#991b1b',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Suppr.
+                        </button>
+                      </>
                     )}
-                    <button onClick={() => handleDelete(c._id, c.name)} style={{
-                      flex: c.active ? 1 : 'none', padding: '8px 16px', background: '#fee2e2', color: '#991b1b',
-                      border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                    }}>
-                      Supprimer
-                    </button>
                   </div>
                 )}
               </div>

@@ -21,6 +21,15 @@ const challengeSchema = new mongoose.Schema({
     name: { type: String },
     km: { type: Number },
   }],
+
+results: [{
+    memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Member' },
+    name: { type: String },
+    value: { type: Number },      // km cumulés OU meilleur streak selon le type
+    rank: { type: Number },
+  }],
+  resultsFrozen: { type: Boolean, default: false },
+
   active: { type: Boolean, default: true },
 }, { timestamps: true })
 

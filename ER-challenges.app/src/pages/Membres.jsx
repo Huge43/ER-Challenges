@@ -99,7 +99,7 @@ export default function Membres() {
             Membres
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
-            {members.length} athlètes dans la communauté Elite Runners.
+            {members.length} Elites dans la communauté Elite Runners.
           </p>
         </div>
         {isAdmin && (
