@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import api from '../api/index.js'
+import axios from 'axios'
 import useIsMobile from '../hooks/useIsMobile'
 
 export default function Login() {
@@ -16,7 +16,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const res = await api.post('/auth/login', form)
+      const res = await axios.post('http://localhost:5000/api/auth/login', form)
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('member', JSON.stringify(res.data.member))
       navigate('/dashboard')
@@ -87,7 +87,7 @@ export default function Login() {
               lineHeight: 1.15,
               marginBottom: '1.25rem',
             }}>
-              Dépassons nous ensemble.
+              Dominez la piste.
             </p>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
               Accédez à vos données de performance et repoussez vos limites avec votre communauté.
@@ -138,7 +138,7 @@ export default function Login() {
             color: '#1e2a4a',
             marginBottom: '8px',
           }}>
-            Bon retour.
+            Bon retour, Athlète
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '2.5rem' }}>
             Entrez vos identifiants pour continuer votre préparation.
