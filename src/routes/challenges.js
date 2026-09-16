@@ -4,6 +4,7 @@ import Challenge from '../models/Challenge.js'
 import Member from '../models/Member.js'
 
 // Calcule et fige le classement final d'un challenge terminé
+// Calcule et fige le classement final d'un challenge terminé
 const freezeResults = async (challenge) => {
   const Run = (await import('../models/Run.js')).default
   const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name')
@@ -11,58 +12,30 @@ const freezeResults = async (challenge) => {
   let ranking = []
 
   if (challenge.type === 'streak') {
-      const calcStreak = (dates) => {
-        if (!dates.length) return { current: 0, longest: 0 }
-        const days = [...new Set(dates.map(d => new Date(d).toISOString().split('T')[0]))].sort()
-        let longest = 1, running = 1
-        for (let i = 1; i < days.length; i++) {
-          const diff = Math.round((new Date(days[i]) - new Date(days[i - 1])) / 86400000)
-          running = diff === 1 ? running + 1 : 1
-          longest = Math.max(longest, running)
-        }
-        const lastDay = new Date(days[days.length - 1])
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        lastDay.setHours(0, 0, 0, 0)
-        const current = Math.round((today - lastDay) / 86400000) <= 1 ? running : 0
-        return { current, longest }
+    const calcStreak = (dates) => {
+      if (!dates.length) return { current: 0, longest: 0 }
+      const days = [...new Set(dates.map(d => new Date(d).toISOString().split('T')[0]))].sort()
+      let longest = 1, running = 1
+      for (let i = 1; i < days.length; i++) {
+        const diff = Math.round((new Date(days[i]) - new Date(days[i - 1])) / 86400000)
+        running = diff === 1 ? running + 1 : 1
+        longest = Math.max(longest, running)
       }
-
-      if (challenge.scope === 'collectif') {
-        // Streak du groupe : un jour compte si au moins un membre a été actif
-        const groupStreak = calcStreak(runs.map(r => r.date))
-        // Liste des contributeurs (qui a participé, avec son nombre de jours actifs)
-        const byMember = {}
-        runs.forEach(r => {
-          const id = r.member?._id?.toString()
-          if (!id) return
-          if (!byMember[id]) byMember[id] = { name: r.member.name, days: new Set() }
-          byMember[id].days.add(new Date(r.date).toISOString().split('T')[0])
-        })
-        const contributors = Object.entries(byMember).map(([id, d]) => ({
-          memberId: id, name: d.name, daysActive: d.days.size,
-        })).sort((a, b) => b.daysActive - a.daysActive)
-
-        return res.json({
-          challenge: { name: challenge.name, type: 'streak', scope: 'collectif', goalDays: challenge.goalDays },
-          collectiveStreak: groupStreak,
-          contributors,
-        })
-      }
-
-      // Streak individuel : classement de chaque membre
-      const byMember = {}
-      runs.forEach(r => {
-        const id = r.member?._id?.toString()
-        if (!id) return
-        if (!byMember[id]) byMember[id] = { name: r.member.name, email: r.member.email, dates: [] }
-        byMember[id].dates.push(r.date)
-      })
-      ranking = Object.entries(byMember).map(([id, d]) => ({
-        memberId: id, name: d.name, email: d.email, ...calcStreak(d.dates),
-      })).sort((a, b) => b.current - a.current || b.longest - a.longest)
-    } else {
-    // Classement par km cumulés dans ce challenge
+      return longest
+    }
+    const byMember = {}
+    runs.forEach(r => {
+      const id = r.member?._id?.toString()
+      if (!id) return
+      if (!byMember[id]) byMember[id] = { name: r.member.name, dates: [] }
+      byMember[id].dates.push(r.date)
+    })
+    ranking = Object.entries(byMember).map(([id, d]) => ({
+      memberId: id,
+      name: d.name,
+      value: calcStreak(d.dates),
+    }))
+  } else {
     const byMember = {}
     runs.forEach(r => {
       const id = r.member?._id?.toString()
@@ -77,7 +50,6 @@ const freezeResults = async (challenge) => {
     }))
   }
 
-  // Trier et attribuer les rangs
   ranking.sort((a, b) => b.value - a.value)
   ranking.forEach((r, i) => { r.rank = i + 1 })
 

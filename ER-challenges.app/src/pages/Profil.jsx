@@ -11,8 +11,8 @@ export default function Profil() {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://192.168.2.37:5000/api/members'),
-      axios.get(`http://192.168.2.37:5000/api/runs/member/${currentMember.id}`),
+      axios.get('http://localhost:5000/api/members'),
+      axios.get(`http://localhost:5000/api/runs/member/${currentMember.id}`),
     ]).then(([membersRes, runsRes]) => {
       const me = membersRes.data.find(m => m._id === currentMember.id)
       setMember(me)

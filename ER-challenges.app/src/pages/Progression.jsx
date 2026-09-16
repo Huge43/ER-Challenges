@@ -41,9 +41,9 @@ export default function Progression() {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://192.168.2.37:5000/api/members'),
-      axios.get('http://192.168.2.37:5000/api/members/streaks'),
-      axios.get('http://192.168.2.37:5000/api/runs'),
+      axios.get('http://localhost:5000/api/members'),
+      axios.get('http://localhost:5000/api/members/streaks'),
+      axios.get('http://localhost:5000/api/runs'),
     ]).then(([membersRes, streaksRes, runsRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)

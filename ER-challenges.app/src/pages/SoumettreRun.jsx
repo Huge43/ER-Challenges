@@ -33,7 +33,7 @@ export default function SoumettreRun() {
     }
     setLoading(true)
     try {
-      await axios.post('http://192.168.2.37:5000/api/runs', {
+      await axios.post('http://localhost:5000/api/runs', {
         member: member.id,
         challenge: challenge._id,
         km: isStreak ? Number(form.km || 0) : Number(form.km),

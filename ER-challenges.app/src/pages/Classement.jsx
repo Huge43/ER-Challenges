@@ -4,7 +4,7 @@ import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
 const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
-const MEDALS = ['🥇', '🥈', '🥉']
+const MEDALS = ['🥇', '🥈', '🥉'] 
 
 const PALIERS_KM = [
   { value: 50, label: 'Premiers pas', icon: '🌱' },
@@ -68,7 +68,7 @@ export default function Classement() {
   const isGlobal = view === 'global'
   const isKm = tab === 'km'
   const isCollectiveStreak = !isGlobal && challengeRanking?.challenge?.scope === 'collectif'
-
+ 
   let list = []
   let unit = 'km'
   let getValue = (m) => 0
