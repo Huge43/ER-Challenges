@@ -1,4 +1,4 @@
-# Elite Runners 🏃‍♂️🔥
+# Elite Runners 
 
 > Une application web qui anime une communauté de coureurs à travers des défis collectifs : cumuler des kilomètres, maintenir des séries de jours d'activité, grimper dans les classements et se motiver en groupe.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 💡 Le contexte : pourquoi ce projet ?
+## Le contexte : pourquoi ce projet ?
 
 Je fais partie d'un Runclub **Elite Runners**, où l'on se motive mutuellement à travers des défis réguliers. Le problème : ces défis étaient organisés à la main (messages de groupe, suivis dans un tableur), ce qui était fastidieux et peu engageant.
 
