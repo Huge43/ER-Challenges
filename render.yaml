@@ -1,0 +1,24 @@
+# Blueprint Render pour l'API : New > Blueprint, puis choisir ce dépôt
+services:
+  - type: web
+    name: elite-runners-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # Valeur observée par la communauté Render, non garantie par Render
+      - key: TRUST_PROXY
+        value: "3"
+      - key: CLUB_TZ
+        value: America/Toronto
+      # À saisir dans le tableau de bord Render
+      - key: MONGO_URI
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api'
 
 export default function SoumettreRun() {
-  const [form, setForm] = useState({ km: '', note: '', date: new Date().toISOString().split('T')[0] })
+  const [form, setForm] = useState({ km: '', note: '', date: new Date().toLocaleDateString('en-CA') })
   const [challenge, setChallenge] = useState(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)

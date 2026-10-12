@@ -1,4 +1,4 @@
-// node --test src/middleware/rateLimit.test.js
+// npm test
 import test from 'node:test'
 import assert from 'node:assert'
 import { rateLimit } from './rateLimit.js'

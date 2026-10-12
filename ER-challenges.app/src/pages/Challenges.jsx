@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
 
@@ -19,10 +18,9 @@ export default function Challenges() {
   const [form, setForm] = useState({
     name: '', description: '', type: 'distance', icon: '🏃',
     goalKm: '', goalDays: '', scope: 'individuel',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '', active: false,
   })
-  const navigate = useNavigate()
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
@@ -79,7 +77,7 @@ export default function Challenges() {
       })
       setSuccess('Challenge créé avec succès !')
       setShowModal(false)
-      setForm({ name: '', description: '', type: 'distance', icon: '🏃', goalKm: '', goalDays: '', scope: 'individuel', startDate: new Date().toISOString().split('T')[0], endDate: '', active: false })
+      setForm({ name: '', description: '', type: 'distance', icon: '🏃', goalKm: '', goalDays: '', scope: 'individuel', startDate: new Date().toLocaleDateString('en-CA'), endDate: '', active: false })
       fetchChallenges()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -96,7 +94,7 @@ export default function Challenges() {
     goalKm: c.goalKm ? String(c.goalKm) : '',
     goalDays: c.goalDays ? String(c.goalDays) : '',
     scope: c.scope || 'individuel',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '',
     active: false,
   })
