@@ -21,7 +21,7 @@ connectDB()
 
 const app = express()
 
-// Nombre de proxys devant l'API (1 sur Render, Railway, Heroku…) : nécessaire pour que
+// Nombre de proxys devant l'API (dépend de l'hébergeur) : nécessaire pour que
 // la limite de tentatives voie la vraie IP du client et non celle du proxy
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY))
 

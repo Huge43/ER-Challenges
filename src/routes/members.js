@@ -1,7 +1,10 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import Member, { memberInputError } from '../models/Member.js'
+import Run from '../models/Run.js'
+import Challenge from '../models/Challenge.js'
 import { isAdmin } from '../middleware/auth.js'
+import { calcStreak } from '../streak.js'
 
 const router = express.Router()
 
@@ -52,7 +55,16 @@ router.put('/:id/role', isAdmin, async (req, res) => {
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
     if (req.params.id === req.member.id) return res.status(400).json({ message: 'Vous ne pouvez pas supprimer votre propre compte.' })
-    await Member.findByIdAndDelete(req.params.id)
+    const member = await Member.findByIdAndDelete(req.params.id)
+    if (member) {
+      // Retirer ses runs, et leurs km du total de chaque challenge
+      const perChallenge = await Run.aggregate([
+        { $match: { member: member._id } },
+        { $group: { _id: '$challenge', km: { $sum: '$km' } } },
+      ])
+      await Promise.all(perChallenge.map(c => Challenge.findByIdAndUpdate(c._id, { $inc: { currentKm: -c.km } })))
+      await Run.deleteMany({ member: member._id })
+    }
     res.json({ message: 'Membre supprimé.' })
   } catch (err) {
     console.error(err)
@@ -63,35 +75,8 @@ router.delete('/:id', isAdmin, async (req, res) => {
 // GET classement des streaks de tous les membres
 router.get('/streaks', async (req, res) => {
   try {
-    const Run = (await import('../models/Run.js')).default
     const members = await Member.find().select('-password')
     const runs = await Run.find()
-
-    const calcStreak = (dates) => {
-      if (!dates.length) return { current: 0, longest: 0 }
-      const uniqueDays = [...new Set(dates.map(d => new Date(d).toISOString().split('T')[0]))].sort()
-
-      let longest = 1
-      let running = 1
-
-      for (let i = 1; i < uniqueDays.length; i++) {
-        const prev = new Date(uniqueDays[i - 1])
-        const curr = new Date(uniqueDays[i])
-        const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24))
-        if (diffDays === 1) running++
-        else running = 1
-        longest = Math.max(longest, running)
-      }
-
-      const lastDay = new Date(uniqueDays[uniqueDays.length - 1])
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      lastDay.setHours(0, 0, 0, 0)
-      const daysSinceLastRun = Math.round((today - lastDay) / (1000 * 60 * 60 * 24))
-      const current = daysSinceLastRun <= 1 ? running : 0
-
-      return { current, longest }
-    }
 
     const results = members.map(m => {
       const memberRuns = runs.filter(r => r.member?.toString() === m._id.toString())

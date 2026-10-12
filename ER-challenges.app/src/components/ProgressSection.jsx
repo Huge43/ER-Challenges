@@ -9,7 +9,6 @@ const STAGES = [
 
 export default function ProgressSection({ totalKm, goalKm }) {
   const pct = Math.min(100, ((totalKm / goalKm) * 100).toFixed(1))
-  let cumulative = 0
 
   return (
     <div className="box mb-5">
@@ -25,8 +24,8 @@ export default function ProgressSection({ totalKm, goalKm }) {
       <progress className="progress is-success mb-5" value={pct} max="100">{pct}%</progress>
 
       <div className="columns is-multiline">
-        {STAGES.map(stage => {
-          cumulative += stage.km
+        {STAGES.map((stage, i) => {
+          const cumulative = STAGES.slice(0, i + 1).reduce((sum, s) => sum + s.km, 0)
           const done = totalKm >= cumulative
           const active = !done && totalKm >= cumulative - stage.km
           return (

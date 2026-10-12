@@ -6,7 +6,6 @@ import useIsMobile from '../hooks/useIsMobile'
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -187,7 +186,7 @@ export default function Login() {
           </div>
 
           {/* Mot de passe */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <label style={{
                 fontSize: '11px', fontWeight: 700,
@@ -195,9 +194,6 @@ export default function Login() {
               }}>
                 Mot de passe
               </label>
-              <a href="#" style={{ fontSize: '13px', color: '#e67e22', textDecoration: 'none' }}>
-                Mot de passe oublié ?
-              </a>
             </div>
             <div style={{ position: 'relative' }}>
               <span style={{
@@ -231,20 +227,6 @@ export default function Login() {
                 {showPassword ? '🙈' : '👁'}
               </button>
             </div>
-          </div>
-
-          {/* Rester connecté */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2rem' }}>
-            <input
-              type="checkbox"
-              id="remember"
-              checked={remember}
-              onChange={e => setRemember(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: '#e67e22', cursor: 'pointer' }}
-            />
-            <label htmlFor="remember" style={{ fontSize: '14px', color: '#475569', cursor: 'pointer' }}>
-              Rester connecté
-            </label>
           </div>
 
           {/* Bouton */}

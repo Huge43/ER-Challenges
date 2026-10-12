@@ -69,9 +69,7 @@ export default function Classement() {
   const isKm = tab === 'km'
   const isCollectiveStreak = !isGlobal && challengeRanking?.challenge?.scope === 'collectif'
 
-  let list = []
-  let unit = 'km'
-  let getValue = (m) => 0
+  let list, unit, getValue
 
   if (isGlobal) {
     list = isKm ? members : streaks
