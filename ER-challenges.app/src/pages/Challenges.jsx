@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
 
 const TYPES = {
@@ -29,11 +29,11 @@ export default function Challenges() {
   const isMobile = useIsMobile()
 
   const fetchChallenges = () => {
-    axios.get('http://localhost:5000/api/challenges')
+    api.get('/challenges')
       .then(res => {
         setChallenges(res.data)
         res.data.filter(c => c.type === 'streak').forEach(c => {
-          axios.get(`http://localhost:5000/api/challenges/${c._id}/streak`)
+          api.get(`/challenges/${c._id}/streak`)
             .then(streakRes => setStreaks(prev => ({ ...prev, [c._id]: streakRes.data })))
             .catch(err => console.error(err))
         })
@@ -74,7 +74,7 @@ export default function Challenges() {
         payload.goalDays = Number(form.goalDays)
         payload.scope = form.scope
       }
-      await axios.post('http://localhost:5000/api/challenges', payload, {
+      await api.post('/challenges', payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge créé avec succès !')
@@ -106,7 +106,7 @@ export default function Challenges() {
 
   const handleActivate = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/challenges/${id}/activate`, {}, {
+      await api.put(`/challenges/${id}/activate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge activé !')
@@ -119,7 +119,7 @@ export default function Challenges() {
 
   const handlePause = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/challenges/${id}/pause`, {}, {
+      await api.put(`/challenges/${id}/pause`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge mis en pause.')
@@ -133,7 +133,7 @@ export default function Challenges() {
   const handleEnd = async (id, name) => {
     if (!window.confirm(`Terminer le challenge "${name}" maintenant ? Cette action est définitive.`)) return
     try {
-      await axios.put(`http://localhost:5000/api/challenges/${id}/end`, {}, {
+      await api.put(`/challenges/${id}/end`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge terminé.')
@@ -147,7 +147,7 @@ export default function Challenges() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Supprimer le challenge "${name}" ?`)) return
     try {
-      await axios.delete(`http://localhost:5000/api/challenges/${id}`, {
+      await api.delete(`/challenges/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Challenge supprimé.')

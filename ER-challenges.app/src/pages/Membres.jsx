@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe','#e0e7ff','#fce7f3','#dcfce7','#fef3c7','#fee2e2','#f3e8ff','#e0f2fe','#f0fdf4','#fdf4ff']
@@ -20,8 +20,8 @@ export default function Membres() {
 
   const fetchMembers = () => {
     Promise.all([
-      axios.get('http://localhost:5000/api/members'),
-      axios.get('http://localhost:5000/api/members/streaks'),
+      api.get('/members'),
+      api.get('/members/streaks'),
     ]).then(([membersRes, streaksRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)
@@ -33,9 +33,9 @@ export default function Membres() {
 
   const handleAdd = async () => {
     setError('')
-    if (!form.name || !form.email) { setError('Nom et email requis.'); return }
+    if (!form.name || !form.email || form.password.length < 8) { setError('Nom, email et mot de passe (8 caractères minimum) requis.'); return }
     try {
-      await axios.post('http://localhost:5000/api/members', form, {
+      await api.post('/members', form, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess('Membre ajouté avec succès !')
@@ -51,7 +51,7 @@ export default function Membres() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Retirer ${name} de la communauté ?`)) return
     try {
-      await axios.delete(`http://localhost:5000/api/members/${id}`, {
+      await api.delete(`/members/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setSuccess(`${name} a été retiré.`)
@@ -64,7 +64,7 @@ export default function Membres() {
 
   const handleRoleChange = async (id, newRole) => {
     try {
-      await axios.put(`http://localhost:5000/api/members/${id}/role`,
+      await api.put(`/members/${id}/role`,
         { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -299,7 +299,7 @@ export default function Membres() {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '6px' }}>
-                Mot de passe <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(défaut : EliteRunners2026)</span>
+                Mot de passe <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(8 caractères minimum)</span>
               </label>
               <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} style={inputStyle} />
             </div>

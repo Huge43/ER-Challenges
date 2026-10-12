@@ -1,7 +1,6 @@
 import express from 'express'
-import jwt from 'jsonwebtoken'
 import Challenge from '../models/Challenge.js'
-import Member from '../models/Member.js'
+import { isAdmin } from '../middleware/auth.js'
 
 // Calcule et fige le classement final d'un challenge terminé
 // Calcule et fige le classement final d'un challenge terminé
@@ -61,20 +60,9 @@ const freezeResults = async (challenge) => {
 
 const router = express.Router()
 
-// Middleware admin
-const isAdmin = async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1]
-    if (!token) return res.status(401).json({ message: 'Non autorisé.' })
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const member = await Member.findById(decoded.id)
-    if (!member || member.role !== 'admin') return res.status(403).json({ message: 'Accès réservé aux admins.' })
-    req.member = member
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
+// Champs qu'un admin peut définir (results, resultsFrozen et currentKm sont calculés par le serveur)
+const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'active']
+const pick = (body) => Object.fromEntries(FIELDS.filter(f => body?.[f] !== undefined).map(f => [f, body[f]]))
 
 // GET tous les challenges
 router.get('/', async (req, res) => {
@@ -93,7 +81,8 @@ router.get('/', async (req, res) => {
     const updated = await Challenge.find().sort({ createdAt: -1 })
     res.json(updated)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
@@ -104,7 +93,8 @@ router.get('/active', async (req, res) => {
       .populate('participants', '-password')
     res.json(challenge)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
@@ -116,14 +106,15 @@ router.get('/:id', async (req, res) => {
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
     res.json(challenge)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
 // POST créer un challenge (admin)
 router.post('/', isAdmin, async (req, res) => {
   try {
-    const challenge = new Challenge(req.body)
+    const challenge = new Challenge(pick(req.body))
     await challenge.save()
     res.status(201).json(challenge)
   } catch (err) {
@@ -134,7 +125,8 @@ router.post('/', isAdmin, async (req, res) => {
 // PUT modifier un challenge (admin)
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const challenge = await Challenge.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const challenge = await Challenge.findByIdAndUpdate(req.params.id, pick(req.body), { new: true, runValidators: true })
+    if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
     res.json(challenge)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -158,7 +150,8 @@ router.delete('/:id', isAdmin, async (req, res) => {
     await Challenge.findByIdAndDelete(req.params.id)
     res.json({ message: 'Challenge supprimé.' })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
@@ -231,7 +224,8 @@ router.get('/:id/streak', async (req, res) => {
       return res.json({ scope: 'individuel', members: results, goalDays: challenge.goalDays })
     }
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
@@ -243,6 +237,7 @@ router.put('/:id/end', isAdmin, async (req, res) => {
       { endDate: new Date(), active: false },
       { new: true }
     )
+    if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
     await freezeResults(challenge)
     res.json(challenge)
   } catch (err) {
@@ -317,7 +312,8 @@ router.get('/:id/ranking', async (req, res) => {
 
     res.json({ challenge: { name: challenge.name, type: challenge.type, scope: challenge.scope }, ranking })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    console.error(err)
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 

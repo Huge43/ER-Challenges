@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
     })
   } catch (err) {
     console.error('Erreur dashboard :', err.message)
-    res.status(500).json({ message: err.message })
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 

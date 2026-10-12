@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
@@ -43,15 +43,15 @@ export default function Classement() {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/members'),
-      axios.get('http://localhost:5000/api/members/streaks'),
-      axios.get('http://localhost:5000/api/challenges/active'),
+      api.get('/members'),
+      api.get('/members/streaks'),
+      api.get('/challenges/active'),
     ]).then(([membersRes, streaksRes, activeRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)
       setActiveChallenge(activeRes.data)
       if (activeRes.data?._id) {
-        axios.get(`http://localhost:5000/api/challenges/${activeRes.data._id}/ranking`)
+        api.get(`/challenges/${activeRes.data._id}/ranking`)
           .then(res => setChallengeRanking(res.data))
           .catch(err => console.error(err))
       }

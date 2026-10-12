@@ -7,6 +7,12 @@ import Run from './models/Run.js'
 
 dotenv.config()
 
+// Ce script EFFACE toute la base : il faut le demander explicitement, et jamais en production
+if (process.env.NODE_ENV === 'production' || !process.argv.includes('--wipe')) {
+  console.error('Refusé : ce script efface toute la base. Hors production uniquement : node src/seed.js --wipe')
+  process.exit(1)
+}
+
 await mongoose.connect(process.env.MONGO_URI)
 console.log('MongoDB connecté')
 

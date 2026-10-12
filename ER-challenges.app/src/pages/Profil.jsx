@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
 
 export default function Profil() {
@@ -8,11 +8,33 @@ export default function Profil() {
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const isMobile = useIsMobile()
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState('')
+  const [pwLoading, setPwLoading] = useState(false)
+
+  const handlePassword = async (e) => {
+    e.preventDefault()
+    setPwError('')
+    setPwSuccess('')
+    if (pwForm.next.length < 8) { setPwError('Le nouveau mot de passe doit contenir au moins 8 caractères.'); return }
+    if (pwForm.next !== pwForm.confirm) { setPwError('Les mots de passe ne correspondent pas.'); return }
+    setPwLoading(true)
+    try {
+      await api.put('/auth/password', { currentPassword: pwForm.current, newPassword: pwForm.next })
+      setPwSuccess('Mot de passe mis à jour.')
+      setPwForm({ current: '', next: '', confirm: '' })
+    } catch (err) {
+      setPwError(err.response?.data?.message || 'Erreur.')
+    } finally {
+      setPwLoading(false)
+    }
+  }
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/members'),
-      axios.get(`http://localhost:5000/api/runs/member/${currentMember.id}`),
+      api.get('/members'),
+      api.get(`/runs/member/${currentMember.id}`),
     ]).then(([membersRes, runsRes]) => {
       const me = membersRes.data.find(m => m._id === currentMember.id)
       setMember(me)
@@ -172,6 +194,59 @@ export default function Profil() {
           </div>
         )}
       </div>
+
+      {/* Changer le mot de passe */}
+      <form onSubmit={handlePassword} style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e8edf5', padding: '1.5rem', marginTop: '2rem',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '1.25rem' }}>
+          Changer le mot de passe
+        </p>
+
+        {pwError && (
+          <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#991b1b', marginBottom: '1.25rem' }}>
+            {pwError}
+          </div>
+        )}
+        {pwSuccess && (
+          <div style={{ background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#14532d', marginBottom: '1.25rem' }}>
+            {pwSuccess}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
+          {[
+            { key: 'current', label: 'Mot de passe actuel', autoComplete: 'current-password' },
+            { key: 'next', label: 'Nouveau (8 caractères min.)', autoComplete: 'new-password' },
+            { key: 'confirm', label: 'Confirmer le nouveau', autoComplete: 'new-password' },
+          ].map(field => (
+            <label key={field.key} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>
+              {field.label}
+              <input
+                type="password" required autoComplete={field.autoComplete}
+                value={pwForm[field.key]}
+                onChange={e => setPwForm({ ...pwForm, [field.key]: e.target.value })}
+                style={{
+                  display: 'block', width: '100%', marginTop: '8px', padding: '13px 14px',
+                  border: '1px solid #e2e8f0', borderRadius: '10px',
+                  fontSize: '14px', color: '#1e2a4a', background: '#f8fafc',
+                }}
+              />
+            </label>
+          ))}
+        </div>
+
+        <button type="submit" disabled={pwLoading} style={{
+          padding: '12px 24px', background: pwLoading ? '#f0a050' : '#e67e22',
+          color: '#fff', border: 'none', borderRadius: '10px',
+          fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+          cursor: pwLoading ? 'not-allowed' : 'pointer',
+        }}>
+          {pwLoading ? 'Mise à jour...' : 'Mettre à jour'}
+        </button>
+      </form>
     </div>
   )
 }
