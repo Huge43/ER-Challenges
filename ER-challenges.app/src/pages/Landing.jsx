@@ -43,7 +43,7 @@ export default function Landing() {
           fontSize: '12px', fontWeight: 600, letterSpacing: '0.08em',
           textTransform: 'uppercase', marginBottom: '2rem',
         }}>
-          La plateforme de challenges de elte runners
+          La plateforme de challenges de elite runners
         </span>
        <h1 style={{
   fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '38px' : '64px', fontWeight: 700,
