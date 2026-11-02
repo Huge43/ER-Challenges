@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
+import { getStatus, getProgress as getProgressOf, formatDay } from '../utils/challenge'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -207,65 +208,7 @@ export default function Challenges() {
     }
   }
 
-  const now = new Date()
-  const getStatus = (c) => {
-    const start = new Date(c.startDate)
-    const end = new Date(c.endDate)
-    if (end < now) return { label: 'Terminé', color: '#f1f5f9', text: '#64748b' }
-    if (start > now) return { label: 'À venir', color: '#e0e7ff', text: '#3730a3' }
-    if (c.active) return { label: 'Actif', color: '#dcfce7', text: '#14532d' }
-    return { label: 'En pause', color: '#fef3c7', text: '#92400e' }
-  }
-
-  const getProgress = (c) => {
-    if (c.type === 'streak') {
-      const streakData = streaks[c._id]
-      if (!streakData) return { current: 0, goal: c.goalDays, pct: 0, unit: 'jours', label: 'Chargement...' }
-
-      if (c.scope === 'collectif') {
-        const pct = c.goalDays ? Math.min(100, ((streakData.current / c.goalDays) * 100).toFixed(1)) : 0
-        return {
-          current: streakData.current,
-          goal: c.goalDays,
-          pct,
-          unit: 'jours',
-          label: `${streakData.current} / ${c.goalDays} jours (collectif)`,
-        }
-      } else {
-        const best = streakData.members?.[0]
-        const current = best?.current || 0
-        const pct = c.goalDays ? Math.min(100, ((current / c.goalDays) * 100).toFixed(1)) : 0
-        return {
-          current,
-          goal: c.goalDays,
-          pct,
-          unit: 'jours',
-          label: `Meilleur : ${current} / ${c.goalDays} jours`,
-        }
-      }
-    } else if (c.scope === 'individuel') {
-      const best = c.memberKm?.[0]
-      const current = best?.km || 0
-      const pct = c.goalKm ? Math.min(100, ((current / c.goalKm) * 100).toFixed(1)) : 0
-      const finishers = c.memberKm?.filter(m => m.km >= c.goalKm).length || 0
-      return {
-        current,
-        goal: c.goalKm,
-        pct,
-        unit: 'km',
-        label: `Meilleur : ${current} / ${c.goalKm} km · ${finishers} à l'objectif`,
-      }
-    } else {
-      const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
-      return {
-        current: c.currentKm,
-        goal: c.goalKm,
-        pct,
-        unit: 'km',
-        label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`,
-      }
-    }
-  }
+  const getProgress = (c) => getProgressOf(c, streaks, currentMember.id)
 
   const inputStyle = {
     width: '100%', padding: '11px 14px',
@@ -462,7 +405,7 @@ export default function Challenges() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: isAdmin ? '1rem' : 0 }}>
-                  <span>📅 {new Date(c.startDate).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })} → {new Date(c.endDate).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })}</span>
+                  <span>📅 {formatDay(c.startDate, { month: 'short', day: 'numeric' })} → {formatDay(c.endDate, { month: 'short', day: 'numeric' })}</span>
                   <span>{c.participants?.length || 0} participants</span>
                 </div>
 

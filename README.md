@@ -149,12 +149,11 @@ L'application s'ouvre sur **http://localhost:5173**
 npm test
 ```
 
-### Comptes de démonstration
+Les tests de l'API tournent sur une base MongoDB en mémoire, téléchargée automatiquement au premier lancement.
 
-| Rôle | Email | Mot de passe |
-|------|-------|--------------|
-| Administrateur | marie@elite.com | 1234 |
-| Membre | alex@elite.com | 1234 |
+### Premier admin
+
+Créer un compte depuis la page d'inscription, puis lui donner le rôle `admin` directement dans MongoDB Atlas (champ `role`). Les admins suivants se nomment depuis la page Membres.
 
 </details>
 

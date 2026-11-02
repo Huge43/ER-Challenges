@@ -2,9 +2,9 @@ import express from 'express'
 import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
-import { calcStreak } from '../streak.js'
+import Member from '../models/Member.js'
+import { calcStreak, isChallengeOver } from '../streak.js'
 
-// Calcule et fige le classement final d'un challenge terminé
 // Calcule et fige le classement final d'un challenge terminé
 const freezeResults = async (challenge) => {
   const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name')
@@ -78,13 +78,10 @@ const pick = (body) => Object.fromEntries(FIELDS.filter(f => body?.[f] !== undef
 router.get('/', async (req, res) => {
   try {
     const challenges = await Challenge.find().sort({ createdAt: -1 })
-    const now = new Date()
 
     // Figer les challenges terminés qui ne le sont pas encore
     for (const c of challenges) {
-      if (new Date(c.endDate) < now && !c.resultsFrozen) {
-        await freezeResults(c)
-      }
+      if (!c.resultsFrozen && isChallengeOver(c)) await freezeResults(c)
     }
 
     // Recharger pour renvoyer les résultats à jour
@@ -160,7 +157,16 @@ router.put('/:id/activate', isAdmin, async (req, res) => {
 // DELETE supprimer un challenge (admin)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
-    await Challenge.findByIdAndDelete(req.params.id)
+    const challenge = await Challenge.findByIdAndDelete(req.params.id)
+    if (challenge) {
+      // Retirer ses runs, et leurs km du total de chaque membre
+      const perMember = await Run.aggregate([
+        { $match: { challenge: challenge._id } },
+        { $group: { _id: '$member', km: { $sum: '$km' } } },
+      ])
+      await Promise.all(perMember.map(m => Member.findByIdAndUpdate(m._id, { $inc: { totalKm: -m.km } })))
+      await Run.deleteMany({ challenge: challenge._id })
+    }
     res.json({ message: 'Challenge supprimé.' })
   } catch (err) {
     console.error(err)

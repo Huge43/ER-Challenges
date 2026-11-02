@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { getDashboard } from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
+import { getStatus, getProgress as getProgressOf } from '../utils/challenge'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -55,47 +56,11 @@ export default function Dashboard() {
   )
 
   const active = activeChallenge
-  const now = new Date()
 
-  // Progression adaptée au type du challenge
-  const getProgress = (c) => {
-    if (!c) return { pct: 0, label: '', big: '' }
-    if (c.type === 'streak') {
-      const s = streaks[c._id]
-      if (!s) return { pct: 0, label: 'Calcul du streak...', big: '...' }
-      if (c.scope === 'collectif') {
-        const pct = c.goalDays ? Math.min(100, ((s.current / c.goalDays) * 100).toFixed(1)) : 0
-        return { pct, label: `${s.current} / ${c.goalDays} jours consécutifs (groupe)`, big: `${s.current}j 🔥` }
-      } else {
-        // Individuel : streak du membre connecté, sinon le meilleur
-        const mine = s.members?.find(m => m.memberId === currentMember.id)
-        const shown = mine || s.members?.[0] || { current: 0 }
-        const pct = c.goalDays ? Math.min(100, ((shown.current / c.goalDays) * 100).toFixed(1)) : 0
-        const who = mine ? 'mon streak' : `meilleur : ${shown.name || '—'}`
-        return { pct, label: `${shown.current} / ${c.goalDays} jours (${who})`, big: `${shown.current}j 🔥` }
-      }
-    }
-    if (c.scope === 'individuel') {
-      // Individuel : km du membre connecté, sinon le meilleur
-      const mine = c.memberKm?.find(m => m.memberId === currentMember.id)
-      const shown = mine || c.memberKm?.[0] || { km: 0 }
-      const pct = c.goalKm ? Math.min(100, ((shown.km / c.goalKm) * 100).toFixed(1)) : 0
-      const who = mine ? 'mes km' : `meilleur : ${shown.name || '—'}`
-      return { pct, label: `${shown.km} / ${c.goalKm} km (${who})`, big: `${pct}%` }
-    }
-    const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
-    return { pct, label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
-  }
+  const getProgress = (c) => getProgressOf(c, streaks, currentMember.id)
 
   const activeProgress = getProgress(active)
-  const top3 = data.members?.slice(0, 3) || []
-
-  const getStatus = (c) => {
-    if (c.active) return { label: 'Actif', color: '#dcfce7', text: '#14532d' }
-    if (new Date(c.startDate) > now) return { label: 'À venir', color: '#e0e7ff', text: '#3730a3' }
-    if (new Date(c.endDate) < now) return { label: 'Terminé', color: '#f1f5f9', text: '#64748b' }
-    return { label: 'Inactif', color: '#fef3c7', text: '#92400e' }
-  }
+  const top3 = data.topContributors || []
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -277,7 +242,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
-                  <p style={{ fontSize: '12px', color: '#64748b' }}>{m.totalKm} km</p>
+                  <p style={{ fontSize: '12px', color: '#64748b' }}>{m.km} km</p>
                 </div>
               </div>
             ))

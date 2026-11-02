@@ -16,6 +16,9 @@ const loginLimit = rateLimit({
   key: (req) => `${req.ip}|${String(req.body?.email).toLowerCase()}`,
 })
 const registerLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, key: (req) => req.ip })
+
+// v : version du jeton ; l'incrémenter (changement de mot de passe) invalide les anciens jetons
+const signToken = (member) => jwt.sign({ id: member._id, v: member.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '7d' })
 const resetLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: (req) => req.ip })
 
 // POST /api/auth/register
@@ -32,7 +35,7 @@ router.post('/register', registerLimit, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10)
     const member = await Member.create({ name, email, password: hashed })
 
-    const token = jwt.sign({ id: member._id }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    const token = signToken(member)
 
     res.status(201).json({
       token,
@@ -58,7 +61,7 @@ router.post('/login', loginLimit, async (req, res) => {
     const valid = await bcrypt.compare(password, member.password)
     if (!valid) return res.status(400).json({ message: 'Email ou mot de passe incorrect.' })
 
-    const token = jwt.sign({ id: member._id }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    const token = signToken(member)
 
     res.json({
       token,
@@ -84,7 +87,7 @@ router.post('/reset-password', resetLimit, async (req, res) => {
     const member = await Member.findOneAndUpdate({
       resetTokenHash: crypto.createHash('sha256').update(token).digest('hex'),
       resetTokenExpires: mongoose.trusted({ $gt: new Date() }),
-    }, { password, $unset: { resetTokenHash: 1, resetTokenExpires: 1 } })
+    }, { password, $unset: { resetTokenHash: 1, resetTokenExpires: 1 }, $inc: { tokenVersion: 1 } })
     if (!member) return res.status(400).json({ message: 'Lien invalide ou expiré.' })
 
     res.json({ message: 'Mot de passe réinitialisé.' })
@@ -108,9 +111,11 @@ router.put('/password', auth, passwordLimit, async (req, res) => {
     if (!valid) return res.status(400).json({ message: 'Mot de passe actuel incorrect.' })
 
     member.password = await bcrypt.hash(newPassword, 10)
+    member.tokenVersion = (member.tokenVersion || 0) + 1
     await member.save()
 
-    res.json({ message: 'Mot de passe mis à jour.' })
+    // Les autres sessions sont déconnectées ; celle-ci reçoit un nouveau jeton
+    res.json({ message: 'Mot de passe mis à jour.', token: signToken(member) })
   } catch (err) {
     console.error('Erreur changement de mot de passe :', err)
     res.status(500).json({ message: 'Erreur serveur.' })

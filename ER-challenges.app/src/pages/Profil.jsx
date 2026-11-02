@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
+import { formatDay } from '../utils/challenge'
 
 export default function Profil() {
   const [member, setMember] = useState(null)
@@ -21,7 +22,9 @@ export default function Profil() {
     if (pwForm.next !== pwForm.confirm) { setPwError('Les mots de passe ne correspondent pas.'); return }
     setPwLoading(true)
     try {
-      await api.put('/auth/password', { currentPassword: pwForm.current, newPassword: pwForm.next })
+      const res = await api.put('/auth/password', { currentPassword: pwForm.current, newPassword: pwForm.next })
+      // Les autres sessions sont déconnectées, celle-ci garde la main avec le nouveau jeton
+      localStorage.setItem('token', res.data.token)
       setPwSuccess('Mot de passe mis à jour.')
       setPwForm({ current: '', next: '', confirm: '' })
     } catch (err) {
@@ -31,17 +34,39 @@ export default function Profil() {
     }
   }
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/members'),
-      api.get(`/runs/member/${currentMember.id}`),
-    ]).then(([membersRes, runsRes]) => {
-      const me = membersRes.data.find(m => m._id === currentMember.id)
-      setMember(me)
-      setRuns(runsRes.data)
-    }).catch(err => console.error(err))
-      .finally(() => setLoading(false))
-  }, [])
+  const load = () => Promise.all([
+    api.get('/members'),
+    api.get(`/runs/member/${currentMember.id}`),
+  ]).then(([membersRes, runsRes]) => {
+    const me = membersRes.data.find(m => m._id === currentMember.id)
+    setMember(me)
+    setRuns(runsRes.data)
+  }).catch(err => console.error(err))
+    .finally(() => setLoading(false))
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [])
+
+  const handleEditRun = async (run) => {
+    const input = window.prompt('Nouvelle distance (km) :', run.km)
+    if (input === null) return
+    try {
+      await api.put(`/runs/${run._id}`, { km: Number(input.replace(',', '.')) })
+      load()
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
+  const handleDeleteRun = async (run) => {
+    if (!window.confirm('Supprimer cette activité ?')) return
+    try {
+      await api.delete(`/runs/${run._id}`)
+      load()
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Erreur.')
+    }
+  }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -177,7 +202,7 @@ export default function Profil() {
                       {run.note || (isValidation ? 'Journée validée' : 'Activité')}
                     </p>
                     <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                      {run.challenge?.name || 'Challenge'} · {new Date(run.date).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
+                      {run.challenge?.name || 'Challenge'} · {formatDay(run.date, { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
                     </p>
                   </div>
                   <span style={{
@@ -188,6 +213,14 @@ export default function Profil() {
                   }}>
                     {isValidation ? '✓ Validée' : `${run.km} km`}
                   </span>
+                  {!isValidation && (
+                    <button onClick={() => handleEditRun(run)} aria-label="Modifier la distance" title="Modifier la distance" style={{
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
+                    }}>✏️</button>
+                  )}
+                  <button onClick={() => handleDeleteRun(run)} aria-label="Supprimer l'activité" title="Supprimer l'activité" style={{
+                    background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
+                  }}>🗑️</button>
                 </div>
               )
             })}

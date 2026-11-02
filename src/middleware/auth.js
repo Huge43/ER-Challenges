@@ -8,7 +8,8 @@ export const auth = async (req, res, next) => {
     if (!token) return res.status(401).json({ message: 'Non autorisé.' })
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
     const member = await Member.findById(decoded.id).select('-password')
-    if (!member) return res.status(401).json({ message: 'Non autorisé.' })
+    // Jeton émis avant le dernier changement de mot de passe : refusé
+    if (!member || (decoded.v || 0) !== (member.tokenVersion || 0)) return res.status(401).json({ message: 'Non autorisé.' })
     req.member = member
     next()
   } catch {
