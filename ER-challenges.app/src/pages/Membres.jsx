@@ -62,6 +62,17 @@ export default function Membres() {
     }
   }
 
+  const handleResetLink = async (id, name) => {
+    try {
+      const res = await api.post(`/members/${id}/reset-link`)
+      const url = `${window.location.origin}/reinitialiser/${res.data.token}`
+      // ponytail: lien copié à la main par l'admin ; envoyer un courriel quand le club aura un service d'envoi
+      window.prompt(`Lien de réinitialisation pour ${name}, valable 24 h. Copiez-le et envoyez-le-lui :`, url)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
   const handleRoleChange = async (id, newRole) => {
     try {
       await api.put(`/members/${id}/role`,
@@ -240,6 +251,17 @@ export default function Membres() {
                   {isAdmin && (
                     <td style={{ padding: '14px 1.5rem', textAlign: 'right' }}>
                       {!isMe && (
+                        <>
+                        <button
+                          onClick={() => handleResetLink(m._id, m.name)}
+                          style={{
+                            padding: '6px 14px', marginRight: '8px', background: '#eff6ff',
+                            color: '#1e3a8a', border: 'none', borderRadius: '6px',
+                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          Réinitialiser le mot de passe
+                        </button>
                         <button
                           onClick={() => handleDelete(m._id, m.name)}
                           style={{
@@ -252,6 +274,7 @@ export default function Membres() {
                         >
                           Retirer
                         </button>
+                        </>
                       )}
                     </td>
                   )}

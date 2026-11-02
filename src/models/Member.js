@@ -8,6 +8,9 @@ const memberSchema = new mongoose.Schema({
   avatar: { type: String, default: '' },
   totalKm: { type: Number, default: 0 },
   role: { type: String, enum: ['member', 'admin'], default: 'member' },
+  // Lien de réinitialisation : seul le hash du jeton est stocké ; select: false le garde hors des réponses
+  resetTokenHash: { type: String, select: false },
+  resetTokenExpires: { type: Date, select: false },
 }, { timestamps: true })
 
 // Renvoie un message d'erreur si le mot de passe est invalide, sinon null

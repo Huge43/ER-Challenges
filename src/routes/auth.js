@@ -1,4 +1,6 @@
+import crypto from 'node:crypto'
 import express from 'express'
+import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Member, { memberInputError, passwordError } from '../models/Member.js'
@@ -14,6 +16,7 @@ const loginLimit = rateLimit({
   key: (req) => `${req.ip}|${String(req.body?.email).toLowerCase()}`,
 })
 const registerLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, key: (req) => req.ip })
+const resetLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: (req) => req.ip })
 
 // POST /api/auth/register
 router.post('/register', registerLimit, async (req, res) => {
@@ -63,6 +66,30 @@ router.post('/login', loginLimit, async (req, res) => {
     })
   } catch (err) {
     console.error('Erreur login :', err)
+    res.status(500).json({ message: 'Erreur serveur.' })
+  }
+})
+
+// POST /api/auth/reset-password — définir un nouveau mot de passe avec le lien reçu d'un admin
+router.post('/reset-password', resetLimit, async (req, res) => {
+  try {
+    const { token, newPassword } = req.body ?? {}
+    if (typeof token !== 'string') return res.status(400).json({ message: 'Lien invalide ou expiré.' })
+
+    const invalid = passwordError(newPassword)
+    if (invalid) return res.status(400).json({ message: invalid })
+
+    // Mise à jour atomique : le lien ne sert qu'une fois. trusted : sanitizeFilter bloquerait $gt
+    const password = await bcrypt.hash(newPassword, 10)
+    const member = await Member.findOneAndUpdate({
+      resetTokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+      resetTokenExpires: mongoose.trusted({ $gt: new Date() }),
+    }, { password, $unset: { resetTokenHash: 1, resetTokenExpires: 1 } })
+    if (!member) return res.status(400).json({ message: 'Lien invalide ou expiré.' })
+
+    res.json({ message: 'Mot de passe réinitialisé.' })
+  } catch (err) {
+    console.error('Erreur réinitialisation :', err)
     res.status(500).json({ message: 'Erreur serveur.' })
   }
 })

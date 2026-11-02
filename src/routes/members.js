@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import Member, { memberInputError } from '../models/Member.js'
@@ -51,6 +52,21 @@ router.put('/:id/role', isAdmin, async (req, res) => {
   }
 })
 
+// POST générer un lien de réinitialisation du mot de passe (admin), valable 24 h
+router.post('/:id/reset-link', isAdmin, async (req, res) => {
+  try {
+    const token = crypto.randomBytes(32).toString('base64url')
+    const member = await Member.findByIdAndUpdate(req.params.id, {
+      resetTokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+      resetTokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    })
+    if (!member) return res.status(404).json({ message: 'Membre introuvable.' })
+    res.json({ token })
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+})
+
 // DELETE retirer un membre (admin)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
@@ -64,6 +80,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
       ])
       await Promise.all(perChallenge.map(c => Challenge.findByIdAndUpdate(c._id, { $inc: { currentKm: -c.km } })))
       await Run.deleteMany({ member: member._id })
+      await Challenge.updateMany({ participants: member._id }, { $pull: { participants: member._id } })
     }
     res.json({ message: 'Membre supprimé.' })
   } catch (err) {

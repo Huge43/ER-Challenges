@@ -8,6 +8,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [forgot, setForgot] = useState(false)
   const navigate = useNavigate()
   const isMobile = useIsMobile()
 
@@ -194,7 +195,18 @@ export default function Login() {
               }}>
                 Mot de passe
               </label>
+              <button type="button" onClick={() => setForgot(!forgot)} style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: '12px', fontWeight: 600, color: '#e67e22',
+              }}>
+                Mot de passe oublié ?
+              </button>
             </div>
+            {forgot && (
+              <p role="status" style={{ fontSize: '13px', color: '#475569', background: '#f1f5f9', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                Demandez à un admin du club de vous envoyer un lien de réinitialisation, valable 24 h.
+              </p>
+            )}
             <div style={{ position: 'relative' }}>
               <span style={{
                 position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',

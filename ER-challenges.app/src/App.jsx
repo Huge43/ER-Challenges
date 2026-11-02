@@ -10,6 +10,7 @@ import Membres from './pages/Membres'
 import Challenges from './pages/Challenges'
 import Profil from './pages/Profil'
 import Landing from './pages/Landing'
+import ResetPassword from './pages/ResetPassword'
 import ProtectedRoute from './components/ProtectedRoute'
 import useIsMobile from './hooks/useIsMobile'
 
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/reinitialiser/:token" element={<ResetPassword />} />
         <Route path="/*" element={
           <ProtectedRoute>
             <Layout>
