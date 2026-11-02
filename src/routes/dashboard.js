@@ -1,4 +1,5 @@
 import express from 'express'
+import mongoose from 'mongoose'
 import Member from '../models/Member.js'
 import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
@@ -19,7 +20,9 @@ router.get('/', async (req, res) => {
       ? Math.max(0, Math.ceil((new Date(challenge.endDate) - now) / (1000 * 60 * 60 * 24)))
       : 0
 
-    const activeMembers = members.filter(m => m.totalKm > 0).length
+    // Actif = au moins un run dans les 7 derniers jours (trusted : sanitizeFilter bloquerait $gte)
+    const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
+    const activeMembers = (await Run.distinct('member', { date: mongoose.trusted({ $gte: weekAgo }) })).length
 
     res.json({
       totalKm: challenge ? challenge.currentKm : 0,

@@ -94,44 +94,46 @@ En termes simples : l'application repose sur des technologies modernes et largem
 <summary><b>Voir les instructions d'installation</b></summary>
 
 ### Prérequis
-- Node.js v18 ou supérieur
+- Node.js v20 ou supérieur
 - Un compte MongoDB Atlas (gratuit)
 
 ### Installation
 
-Le projet contient deux parties : l'API (serveur) et l'application (interface).
+Le projet contient deux parties : l'API (serveur), à la racine du dépôt, et l'application (interface), dans `ER-challenges.app`.
 
 ```bash
 # 1. Cloner le dépôt
 git clone https://github.com/Huge43/ER-Challenges.git
 cd ER-Challenges
 
-# 2. Installer le serveur
-cd elite-runners-api
+# 2. Installer le serveur (à la racine)
 npm install
 
 # 3. Installer l'interface
-cd ../ER-challenges.app
+cd ER-challenges.app
 npm install
 ```
 
 ### Configuration
 
-Créer un fichier `.env` dans le dossier du serveur :
+Copier `.env.example` en `.env` à la racine du dépôt, puis remplir les valeurs :
 
 ```env
 MONGO_URI=<lien de connexion MongoDB Atlas>
 PORT=5000
-JWT_SECRET=une_phrase_secrete
+JWT_SECRET=<longue phrase aléatoire>
+CORS_ORIGIN=http://localhost:5173
+CLUB_TZ=America/Toronto
 ```
+
+Par défaut, l'interface appelle l'API sur `http://localhost:5000/api`. Pour une autre adresse, définir `VITE_API_URL` dans `ER-challenges.app/.env`.
 
 ### Démarrage
 
 Dans deux terminaux séparés :
 
 ```bash
-# Terminal 1 — le serveur
-cd elite-runners-api
+# Terminal 1 — le serveur (à la racine)
 npm run dev
 
 # Terminal 2 — l'interface
@@ -140,6 +142,12 @@ npm run dev
 ```
 
 L'application s'ouvre sur **http://localhost:5173**
+
+### Tests
+
+```bash
+npm test
+```
 
 ### Comptes de démonstration
 

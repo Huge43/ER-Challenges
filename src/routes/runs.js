@@ -54,8 +54,8 @@ router.post('/', async (req, res) => {
     // Mettre à jour le total km du membre
     await Member.findByIdAndUpdate(req.member._id, { $inc: { totalKm: km } })
 
-    // Mettre à jour le total km du challenge
-    await Challenge.findByIdAndUpdate(challenge._id, { $inc: { currentKm: km } })
+    // Mettre à jour le total km du challenge et y inscrire le membre
+    await Challenge.findByIdAndUpdate(challenge._id, { $inc: { currentKm: km }, $addToSet: { participants: req.member._id } })
 
     res.status(201).json(run)
   } catch (err) {
