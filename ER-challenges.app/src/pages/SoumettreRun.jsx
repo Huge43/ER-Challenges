@@ -244,7 +244,9 @@ export default function SoumettreRun() {
                   +{form.km} km ajoutés à {challenge.name}
                 </p>
                 <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '2px' }}>
-                  Contribution de {((form.km / (challenge.goalKm || 1)) * 100).toFixed(3)}% à l'objectif collectif
+                  {challenge.scope === 'individuel'
+                    ? `${((form.km / (challenge.goalKm || 1)) * 100).toFixed(1)}% de ton objectif de ${challenge.goalKm} km`
+                    : `Contribution de ${((form.km / (challenge.goalKm || 1)) * 100).toFixed(3)}% à l'objectif collectif`}
                 </p>
               </div>
             </div>

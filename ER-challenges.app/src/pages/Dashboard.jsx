@@ -75,6 +75,14 @@ export default function Dashboard() {
         return { pct, label: `${shown.current} / ${c.goalDays} jours (${who})`, big: `${shown.current}j 🔥` }
       }
     }
+    if (c.scope === 'individuel') {
+      // Individuel : km du membre connecté, sinon le meilleur
+      const mine = c.memberKm?.find(m => m.memberId === currentMember.id)
+      const shown = mine || c.memberKm?.[0] || { km: 0 }
+      const pct = c.goalKm ? Math.min(100, ((shown.km / c.goalKm) * 100).toFixed(1)) : 0
+      const who = mine ? 'mes km' : `meilleur : ${shown.name || '—'}`
+      return { pct, label: `${shown.km} / ${c.goalKm} km (${who})`, big: `${pct}%` }
+    }
     const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
     return { pct, label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
   }
@@ -134,15 +142,13 @@ export default function Dashboard() {
                 }}>
                   {TYPES[active.type]?.icon} Challenge actif
                 </span>
-                {active.type === 'streak' && (
-                  <span style={{
-                    display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
-                    background: '#fff7ed', color: '#e67e22',
-                    fontSize: '11px', fontWeight: 600,
-                  }}>
-                    {active.scope === 'collectif' ? 'Streak collectif' : 'Streak individuel'}
-                  </span>
-                )}
+                <span style={{
+                  display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
+                  background: '#fff7ed', color: '#e67e22',
+                  fontSize: '11px', fontWeight: 600,
+                }}>
+                  {active.type === 'streak' ? 'Streak' : 'Distance'} {active.scope === 'collectif' ? 'collectif' : 'individuel'}
+                </span>
               </div>
               <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '24px' : '30px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
                 {active.name}

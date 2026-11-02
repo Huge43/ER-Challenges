@@ -7,6 +7,24 @@ const TYPES = {
   streak: { label: 'Streak', icon: '🔥', color: '#e67e22' },
 }
 
+const SCOPES = {
+  distance: [
+    { key: 'collectif', label: 'Collectif', desc: 'Les km du groupe s\'additionnent' },
+    { key: 'individuel', label: 'Individuel', desc: 'Chacun vise l\'objectif' },
+  ],
+  streak: [
+    { key: 'individuel', label: 'Individuel', desc: 'Chacun son streak' },
+    { key: 'collectif', label: 'Collectif', desc: 'Le groupe entier' },
+  ],
+}
+
+const emptyForm = () => ({
+  name: '', description: '', type: 'distance', icon: '🏃',
+  goalKm: '', goalDays: '', scope: 'collectif',
+  startDate: new Date().toLocaleDateString('en-CA'),
+  endDate: '', active: false,
+})
+
 export default function Challenges() {
   const [challenges, setChallenges] = useState([])
   const [streaks, setStreaks] = useState({})
@@ -15,12 +33,8 @@ export default function Challenges() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState('actifs')
-  const [form, setForm] = useState({
-    name: '', description: '', type: 'distance', icon: '🏃',
-    goalKm: '', goalDays: '', scope: 'individuel',
-    startDate: new Date().toLocaleDateString('en-CA'),
-    endDate: '', active: false,
-  })
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
@@ -41,6 +55,38 @@ export default function Challenges() {
   }
 
   useEffect(() => { fetchChallenges() }, [])
+
+  const openCreate = () => {
+    setForm(emptyForm())
+    setEditingId(null)
+    setError('')
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setEditingId(null)
+    setError('')
+  }
+
+  const handleEdit = (c) => {
+    setForm({
+      name: c.name,
+      description: c.description || '',
+      type: c.type,
+      icon: c.icon,
+      goalKm: c.goalKm ? String(c.goalKm) : '',
+      goalDays: c.goalDays ? String(c.goalDays) : '',
+      scope: c.scope || 'collectif',
+      // Les dates sont enregistrées à minuit UTC : on garde la partie date telle quelle
+      startDate: c.startDate.slice(0, 10),
+      endDate: c.endDate.slice(0, 10),
+      active: c.active,
+    })
+    setEditingId(c._id)
+    setError('')
+    setShowModal(true)
+  }
 
   const handleCreate = async () => {
     setError('')
@@ -65,19 +111,23 @@ export default function Challenges() {
         startDate: form.startDate,
         endDate: form.endDate,
         active: form.active,
+        scope: form.scope,
       }
       if (form.type === 'distance') {
         payload.goalKm = Number(form.goalKm)
       } else {
         payload.goalDays = Number(form.goalDays)
-        payload.scope = form.scope
       }
-      await api.post('/challenges', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setSuccess('Challenge créé avec succès !')
-      setShowModal(false)
-      setForm({ name: '', description: '', type: 'distance', icon: '🏃', goalKm: '', goalDays: '', scope: 'individuel', startDate: new Date().toLocaleDateString('en-CA'), endDate: '', active: false })
+      if (editingId) {
+        await api.put(`/challenges/${editingId}`, payload)
+        setSuccess('Challenge modifié !')
+      } else {
+        await api.post('/challenges', payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setSuccess('Challenge créé avec succès !')
+      }
+      closeModal()
       fetchChallenges()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -93,11 +143,12 @@ export default function Challenges() {
     icon: c.icon,
     goalKm: c.goalKm ? String(c.goalKm) : '',
     goalDays: c.goalDays ? String(c.goalDays) : '',
-    scope: c.scope || 'individuel',
+    scope: c.scope || 'collectif',
     startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '',
     active: false,
   })
+  setEditingId(null)
   setError('')
   setShowModal(true)
 }
@@ -192,6 +243,18 @@ export default function Challenges() {
           label: `Meilleur : ${current} / ${c.goalDays} jours`,
         }
       }
+    } else if (c.scope === 'individuel') {
+      const best = c.memberKm?.[0]
+      const current = best?.km || 0
+      const pct = c.goalKm ? Math.min(100, ((current / c.goalKm) * 100).toFixed(1)) : 0
+      const finishers = c.memberKm?.filter(m => m.km >= c.goalKm).length || 0
+      return {
+        current,
+        goal: c.goalKm,
+        pct,
+        unit: 'km',
+        label: `Meilleur : ${current} / ${c.goalKm} km · ${finishers} à l'objectif`,
+      }
     } else {
       const pct = c.goalKm ? Math.min(100, ((c.currentKm / c.goalKm) * 100).toFixed(1)) : 0
       return {
@@ -245,7 +308,7 @@ export default function Challenges() {
         </div>
         {isAdmin && (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openCreate}
             style={{
               padding: '10px 20px', background: '#e67e22',
               color: '#fff', border: 'none', borderRadius: '10px',
@@ -332,15 +395,13 @@ export default function Challenges() {
                     {c.icon || typeInfo.icon}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    {c.type === 'streak' && (
-                      <span style={{
-                        padding: '4px 10px', borderRadius: '99px',
-                        background: '#fff7ed', color: '#e67e22',
-                        fontSize: '11px', fontWeight: 600,
-                      }}>
-                        {c.scope === 'collectif' ? 'Collectif' : 'Individuel'}
-                      </span>
-                    )}
+                    <span style={{
+                      padding: '4px 10px', borderRadius: '99px',
+                      background: '#fff7ed', color: '#e67e22',
+                      fontSize: '11px', fontWeight: 600,
+                    }}>
+                      {c.scope === 'collectif' ? 'Collectif' : 'Individuel'}
+                    </span>
                     <span style={{
                       padding: '4px 12px', borderRadius: '99px',
                       background: status.color, color: status.text,
@@ -445,6 +506,12 @@ export default function Challenges() {
                         }}>
                           Terminer
                         </button>
+                        <button onClick={() => handleEdit(c)} style={{
+                          padding: '8px 14px', background: '#eff6ff', color: '#1e3a8a',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Modifier
+                        </button>
                         <button onClick={() => handleDelete(c._id, c.name)} style={{
                           padding: '8px 14px', background: '#fee2e2', color: '#991b1b',
                           border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
@@ -474,9 +541,9 @@ export default function Challenges() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
-                Créer un challenge
+                {editingId ? 'Modifier le challenge' : 'Créer un challenge'}
               </h2>
-              <button onClick={() => { setShowModal(false); setError('') }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+              <button onClick={closeModal} aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
 
             {error && (
@@ -499,11 +566,12 @@ export default function Challenges() {
               <label style={labelStyle}>Type de challenge</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                 {Object.entries(TYPES).map(([key, info]) => (
-                  <button key={key} onClick={() => setForm({ ...form, type: key })} style={{
+                  <button key={key} type="button" disabled={!!editingId} onClick={() => setForm({ ...form, type: key })} style={{
                     padding: '12px 8px', borderRadius: '8px',
                     border: form.type === key ? `2px solid ${info.color}` : '1px solid #e2e8f0',
                     background: form.type === key ? `${info.color}10` : '#f8fafc',
-                    cursor: 'pointer', textAlign: 'center',
+                    cursor: editingId ? 'not-allowed' : 'pointer', textAlign: 'center',
+                    opacity: editingId && form.type !== key ? 0.4 : 1,
                   }}>
                     <div style={{ fontSize: '20px', marginBottom: '4px' }}>{info.icon}</div>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: form.type === key ? info.color : '#64748b' }}>{info.label}</div>
@@ -514,22 +582,19 @@ export default function Challenges() {
 
             {form.type === 'distance' ? (
               <div style={{ marginBottom: '1rem' }}>
-                <label style={labelStyle}>Objectif (km)</label>
-                <input type="number" placeholder="Ex: 40075" value={form.goalKm} onChange={e => setForm({ ...form, goalKm: e.target.value })} style={inputStyle} />
+                <label style={labelStyle}>{form.scope === 'individuel' ? 'Objectif par membre (km)' : 'Objectif du groupe (km)'}</label>
+                <input type="number" placeholder={form.scope === 'individuel' ? 'Ex: 100' : 'Ex: 40075'} value={form.goalKm} onChange={e => setForm({ ...form, goalKm: e.target.value })} style={inputStyle} />
               </div>
             ) : (
-              <>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={labelStyle}>Nombre de jours consécutifs</label>
+                <input type="number" placeholder="Ex: 21" value={form.goalDays} onChange={e => setForm({ ...form, goalDays: e.target.value })} style={inputStyle} />
+              </div>
+            )}
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={labelStyle}>Nombre de jours consécutifs</label>
-                  <input type="number" placeholder="Ex: 21" value={form.goalDays} onChange={e => setForm({ ...form, goalDays: e.target.value })} style={inputStyle} />
-                </div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={labelStyle}>Portée du streak</label>
+                  <label style={labelStyle}>Portée</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    {[
-                      { key: 'individuel', label: 'Individuel', desc: 'Chacun son streak' },
-                      { key: 'collectif', label: 'Collectif', desc: 'Le groupe entier' },
-                    ].map(opt => (
+                    {SCOPES[form.type].map(opt => (
                       <button key={opt.key} type="button" onClick={() => setForm({ ...form, scope: opt.key })} style={{
                         padding: '12px', borderRadius: '8px', textAlign: 'left',
                         border: form.scope === opt.key ? '2px solid #e67e22' : '1px solid #e2e8f0',
@@ -542,8 +607,6 @@ export default function Challenges() {
                     ))}
                   </div>
                 </div>
-              </>
-            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
               <div>
@@ -557,11 +620,11 @@ export default function Challenges() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => { setShowModal(false); setError('') }} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={closeModal} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Annuler
               </button>
               <button onClick={handleCreate} style={{ flex: 1, padding: '11px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                Créer le challenge →
+                {editingId ? 'Enregistrer →' : 'Créer le challenge →'}
               </button>
             </div>
           </div>

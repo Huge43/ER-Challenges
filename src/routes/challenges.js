@@ -1,12 +1,12 @@
 import express from 'express'
 import Challenge from '../models/Challenge.js'
+import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
 import { calcStreak } from '../streak.js'
 
 // Calcule et fige le classement final d'un challenge terminé
 // Calcule et fige le classement final d'un challenge terminé
 const freezeResults = async (challenge) => {
-  const Run = (await import('../models/Run.js')).default
   const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name')
 
   let ranking = []
@@ -48,6 +48,26 @@ const freezeResults = async (challenge) => {
   return challenge
 }
 
+// Ajoute les km de chaque membre aux challenges distance individuels (le meilleur en premier)
+const withMemberKm = async (challenges) => {
+  const list = challenges.map(c => c.toObject())
+  const ids = list.filter(c => c.type === 'distance' && c.scope === 'individuel').map(c => c._id)
+  if (!ids.length) return list
+  const rows = await Run.aggregate([
+    { $match: { challenge: { $in: ids } } },
+    { $group: { _id: { challenge: '$challenge', member: '$member' }, km: { $sum: '$km' } } },
+    { $sort: { km: -1 } },
+    { $lookup: { from: 'members', localField: '_id.member', foreignField: '_id', as: 'member' } },
+  ])
+  for (const c of list) {
+    if (!ids.includes(c._id)) continue
+    c.memberKm = rows
+      .filter(r => r._id.challenge.equals(c._id) && r.member[0])
+      .map(r => ({ memberId: r._id.member.toString(), name: r.member[0].name, km: Math.round(r.km * 10) / 10 }))
+  }
+  return list
+}
+
 const router = express.Router()
 
 // Champs qu'un admin peut définir (results, resultsFrozen et currentKm sont calculés par le serveur)
@@ -69,7 +89,7 @@ router.get('/', async (req, res) => {
 
     // Recharger pour renvoyer les résultats à jour
     const updated = await Challenge.find().sort({ createdAt: -1 })
-    res.json(updated)
+    res.json(await withMemberKm(updated))
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Erreur serveur.' })
@@ -81,7 +101,7 @@ router.get('/active', async (req, res) => {
   try {
     const challenge = await Challenge.findOne({ active: true })
       .populate('participants', '-password')
-    res.json(challenge)
+    res.json(challenge && (await withMemberKm([challenge]))[0])
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Erreur serveur.' })
@@ -115,7 +135,10 @@ router.post('/', isAdmin, async (req, res) => {
 // PUT modifier un challenge (admin)
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const challenge = await Challenge.findByIdAndUpdate(req.params.id, pick(req.body), { new: true, runValidators: true })
+    // Le type ne change pas après création (les runs déjà saisis n'auraient plus de sens),
+    // et l'activation passe par /activate pour garder un seul challenge actif
+    const { type, active, ...updates } = pick(req.body)
+    const challenge = await Challenge.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
     res.json(challenge)
   } catch (err) {
@@ -148,7 +171,6 @@ router.delete('/:id', isAdmin, async (req, res) => {
 // GET calcul du streak d'un challenge
 router.get('/:id/streak', async (req, res) => {
   try {
-    const Run = (await import('../models/Run.js')).default
     const challenge = await Challenge.findById(req.params.id)
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
 
@@ -215,7 +237,6 @@ router.put('/:id/pause', isAdmin, async (req, res) => {
 // GET classement d'un challenge (basé sur ses runs uniquement)
 router.get('/:id/ranking', async (req, res) => {
   try {
-    const Run = (await import('../models/Run.js')).default
     const challenge = await Challenge.findById(req.params.id)
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
 
