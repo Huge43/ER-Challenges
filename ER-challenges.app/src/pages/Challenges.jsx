@@ -23,8 +23,14 @@ const emptyForm = () => ({
   name: '', description: '', type: 'distance', icon: '🏃',
   goalKm: '', goalDays: '', scope: 'collectif',
   startDate: new Date().toLocaleDateString('en-CA'),
-  endDate: '', active: false,
+  endDate: '', active: false, stages: [],
 })
+
+// Lignes d'étapes du formulaire → étapes envoyées à l'API (lignes vides ignorées)
+const stagesPayload = (rows) => rows
+  .filter(s => s.name.trim() || s.km !== '')
+  .map(s => ({ name: s.name.trim(), km: Number(s.km) }))
+const stagesForm = (stages = []) => stages.map(s => ({ name: s.name, km: String(s.km) }))
 
 export default function Challenges() {
   const [challenges, setChallenges] = useState([])
@@ -78,6 +84,7 @@ export default function Challenges() {
       icon: c.icon,
       goalKm: c.goalKm ? String(c.goalKm) : '',
       goalDays: c.goalDays ? String(c.goalDays) : '',
+      stages: stagesForm(c.stages),
       scope: c.scope || 'collectif',
       // Les dates sont enregistrées à minuit UTC : on garde la partie date telle quelle
       startDate: c.startDate.slice(0, 10),
@@ -116,6 +123,7 @@ export default function Challenges() {
       }
       if (form.type === 'distance') {
         payload.goalKm = Number(form.goalKm)
+        payload.stages = stagesPayload(form.stages)
       } else {
         payload.goalDays = Number(form.goalDays)
       }
@@ -144,6 +152,7 @@ export default function Challenges() {
     icon: c.icon,
     goalKm: c.goalKm ? String(c.goalKm) : '',
     goalDays: c.goalDays ? String(c.goalDays) : '',
+    stages: stagesForm(c.stages),
     scope: c.scope || 'collectif',
     startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '',
@@ -561,6 +570,34 @@ export default function Challenges() {
                 <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} style={inputStyle} />
               </div>
             </div>
+
+            {/* Étapes : jalons affichés sur la barre de progression */}
+            {form.type === 'distance' && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={labelStyle}>Étapes <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel)</span></label>
+                {form.stages.map((s, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: '8px', marginBottom: '8px' }}>
+                    <input type="text" placeholder="Ex: Paris" aria-label={`Nom de l'étape ${i + 1}`} value={s.name}
+                      onChange={e => setForm({ ...form, stages: form.stages.map((r, j) => j === i ? { ...r, name: e.target.value } : r) })}
+                      style={inputStyle} />
+                    <input type="number" placeholder="km" min="0" aria-label={`Km de l'étape ${i + 1}`} value={s.km}
+                      onChange={e => setForm({ ...form, stages: form.stages.map((r, j) => j === i ? { ...r, km: e.target.value } : r) })}
+                      style={inputStyle} />
+                    <button type="button" aria-label={`Supprimer l'étape ${i + 1}`}
+                      onClick={() => setForm({ ...form, stages: form.stages.filter((_, j) => j !== i) })}
+                      style={{ padding: '0 12px', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setForm({ ...form, stages: [...form.stages, { name: '', km: '' }] })} style={{
+                  padding: '8px 14px', background: '#eff6ff', color: '#1e3a8a',
+                  border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                }}>
+                  + Ajouter une étape
+                </button>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={closeModal} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>

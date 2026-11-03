@@ -33,6 +33,7 @@ const getPalierProgress = (value, paliers) => {
 export default function Classement() {
   const [members, setMembers] = useState([])
   const [streaks, setStreaks] = useState([])
+  const [actives, setActives] = useState([])
   const [activeChallenge, setActiveChallenge] = useState(null)
   const [challengeRanking, setChallengeRanking] = useState(null)
   const [view, setView] = useState('global')
@@ -49,15 +50,20 @@ export default function Classement() {
     ]).then(([membersRes, streaksRes, activeRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)
-      setActiveChallenge(activeRes.data)
-      if (activeRes.data?._id) {
-        api.get(`/challenges/${activeRes.data._id}/ranking`)
-          .then(res => setChallengeRanking(res.data))
-          .catch(err => console.error(err))
-      }
+      setActives(activeRes.data)
+      if (activeRes.data[0]) selectChallenge(activeRes.data[0])
     }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
+
+  // Plusieurs challenges peuvent être actifs : on affiche le classement de celui choisi
+  function selectChallenge(c) {
+    setActiveChallenge(c)
+    setChallengeRanking(null)
+    api.get(`/challenges/${c._id}/ranking`)
+      .then(res => setChallengeRanking(res.data))
+      .catch(err => console.error(err))
+  }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -141,9 +147,25 @@ export default function Classement() {
             cursor: activeChallenge ? 'pointer' : 'not-allowed',
             boxShadow: view === 'challenge' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
           }}>
-          🎯 Challenge actif
+          🎯 {actives.length > 1 ? 'Challenges actifs' : 'Challenge actif'}
         </button>
       </div>
+
+      {/* Choix du challenge quand plusieurs sont actifs */}
+      {!isGlobal && actives.length > 1 && (
+        <select
+          aria-label="Challenge à afficher"
+          value={activeChallenge?._id}
+          onChange={e => selectChallenge(actives.find(c => c._id === e.target.value))}
+          style={{
+            display: 'block', marginBottom: '1.5rem', padding: '10px 14px',
+            border: '1px solid #e2e8f0', borderRadius: '10px', background: '#fff',
+            fontSize: '14px', fontWeight: 600, color: '#1e2a4a', cursor: 'pointer',
+          }}
+        >
+          {actives.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+        </select>
+      )}
 
       {/* Sous-onglets Kilomètres / Streaks — seulement en vue Global */}
       {isGlobal && (

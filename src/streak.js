@@ -6,12 +6,18 @@ export const clubToday = () => new Intl.DateTimeFormat('en-CA', {
   year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date())
 
-// Calcule le streak actuel et le plus long streak de jours consécutifs à partir d'une liste de dates
 // Les dates sans heure (début/fin de challenge, date d'un run) sont stockées à minuit UTC :
-// leur partie date est le jour choisi. Un challenge reste ouvert tout son dernier jour.
-export const isChallengeOver = (c, today = clubToday()) =>
-  c.resultsFrozen || new Date(c.endDate).toISOString().slice(0, 10) < today
+// leur partie date est le jour choisi.
+export const dayOf = (d) => new Date(d).toISOString().slice(0, 10)
 
+// Un challenge reste ouvert tout son dernier jour
+export const isChallengeOver = (c, today = clubToday()) =>
+  c.resultsFrozen || dayOf(c.endDate) < today
+
+// La période du challenge (premier et dernier jour inclus) contient-elle ce jour (YYYY-MM-DD) ?
+export const periodContains = (c, day) => dayOf(c.startDate) <= day && day <= dayOf(c.endDate)
+
+// Calcule le streak actuel et le plus long streak de jours consécutifs à partir d'une liste de dates
 export const calcStreak = (dates, today = clubToday()) => {
   if (!dates.length) return { current: 0, longest: 0 }
 

@@ -90,3 +90,84 @@ test('réinitialisation du mot de passe, runs et challenges', async () => {
   assert.equal((await Member.findById(alice)).totalKm, 0)
   assert.equal((await call('GET', `/runs/member/${alice}`, aliceToken)).data.length, 0)
 })
+
+// Décale un jour YYYY-MM-DD de n jours
+const shift = (day, n) => new Date(Date.parse(day) + n * 86400000).toISOString().slice(0, 10)
+
+test('plusieurs challenges actifs, validation des dates, étapes', async () => {
+  const today = clubToday()
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const reg = await call('POST', '/auth/register', null, { name: 'Bob', email: 'bob@test.com', password: 'motdepasse1' })
+  const bob = reg.data.member.id
+  const bobToken = reg.data.token
+  const challenge = async (id) => (await call('GET', '/challenges', admin)).data.find(c => c._id === id)
+
+  const tour = (await call('POST', '/challenges', admin, {
+    name: 'Tour du monde', type: 'distance', scope: 'collectif', goalKm: 40075,
+    startDate: shift(today, -30), endDate: shift(today, 300), active: true,
+  })).data
+  // Étapes : triées par km, refusées au-delà de l'objectif
+  const nov = (await call('POST', '/challenges', admin, {
+    name: 'Novembre', type: 'distance', scope: 'collectif', goalKm: 600,
+    startDate: shift(today, -1), endDate: shift(today, 20), active: false,
+    stages: [{ name: 'Mi-parcours', km: 300 }, { name: 'Départ', km: 50 }],
+  })).data
+  assert.deepEqual(nov.stages.map(s => s.name), ['Départ', 'Mi-parcours'])
+  const bad = await call('PUT', `/challenges/${nov._id}`, admin, { stages: [{ name: 'Trop loin', km: 700 }] })
+  assert.equal(bad.status, 400)
+  assert.match(bad.data.message, /Trop loin/)
+
+  // Run d'hier : seul le Tour est actif
+  const yesterday = (await call('POST', '/runs', bobToken, { km: 10, date: shift(today, -1) })).data
+  assert.deepEqual(yesterday.challenges, [tour._id])
+
+  // Activer Novembre ne désactive pas le Tour, et rattache le run d'hier
+  await call('PUT', `/challenges/${nov._id}/activate`, admin)
+  assert.equal((await call('GET', '/challenges/active', bobToken)).data.length, 2)
+  assert.equal((await challenge(nov._id)).currentKm, 10)
+
+  // Un run d'aujourd'hui compte pour les deux, le total du membre une seule fois
+  const run = (await call('POST', '/runs', bobToken, { km: 5, date: today })).data
+  assert.equal(run.challenges.length, 2)
+  assert.equal((await Member.findById(bob)).totalKm, 15)
+  // Un run d'il y a 5 jours : seulement le Tour
+  await call('POST', '/runs', bobToken, { km: 3, date: shift(today, -5) })
+  assert.equal((await challenge(tour._id)).currentKm, 18)
+  assert.equal((await challenge(nov._id)).currentKm, 15)
+
+  // Dates refusées avec un message clair
+  const outside = await call('POST', '/runs', bobToken, { km: 5, date: shift(today, -60) })
+  assert.equal(outside.status, 400)
+  assert.match(outside.data.message, /Aucun challenge actif ne couvre/)
+  const future = await call('POST', '/runs', bobToken, { km: 5, date: shift(today, 1) })
+  assert.equal(future.status, 400)
+  assert.match(future.data.message, /futur/)
+
+  // Corriger un run met à jour tous ses challenges
+  await call('PUT', `/runs/${run._id}`, bobToken, { km: 7 })
+  assert.equal((await challenge(tour._id)).currentKm, 20)
+  assert.equal((await challenge(nov._id)).currentKm, 17)
+  assert.equal((await Member.findById(bob)).totalKm, 20)
+
+  // Dashboard : un top 3 par challenge actif
+  const dash = (await call('GET', '/dashboard', bobToken)).data
+  assert.equal(dash.topContributors[nov._id][0].km, 17)
+
+  // Un streak tourne en parallèle : une validation à 0 km ne compte que pour lui
+  const streak = (await call('POST', '/challenges', admin, {
+    name: 'Streak', type: 'streak', scope: 'individuel', goalDays: 7, startDate: today, endDate: shift(today, 6), active: true,
+  })).data
+  const validation = (await call('POST', '/runs', bobToken, { km: 0, date: today })).data
+  assert.deepEqual(validation.challenges, [streak._id])
+  assert.equal((await call('GET', `/challenges/${streak._id}/streak`, bobToken)).data.members[0].current, 1)
+  assert.equal((await challenge(tour._id)).currentKm, 20)
+
+  // Supprimer Novembre : les runs partagés restent comptés dans le Tour
+  await call('DELETE', `/challenges/${nov._id}`, admin)
+  assert.equal((await challenge(tour._id)).currentKm, 20)
+  assert.equal((await Member.findById(bob)).totalKm, 20)
+
+  // Raccourcir la période du Tour détache le run d'il y a 5 jours
+  await call('PUT', `/challenges/${tour._id}`, admin, { startDate: shift(today, -2) })
+  assert.equal((await challenge(tour._id)).currentKm, 17)
+})

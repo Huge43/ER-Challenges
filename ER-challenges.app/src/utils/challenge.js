@@ -2,7 +2,21 @@
 
 // Les dates sans heure sont stockées à minuit UTC : leur partie date est le jour choisi
 const day = (d) => String(d).slice(0, 10)
-const today = () => new Date().toLocaleDateString('en-CA')
+export const today = () => new Date().toLocaleDateString('en-CA')
+
+// La période du challenge (premier et dernier jour inclus) contient-elle ce jour (YYYY-MM-DD) ?
+// Miroir de periodContains côté API (src/streak.js)
+export const containsDay = (c, d) => day(c.startDate) <= d && d <= day(c.endDate)
+
+// Jours restants, aujourd'hui compris : un challenge qui finit aujourd'hui a encore 1 jour
+export const daysLeft = (c) => Math.max(0, Math.round((Date.parse(day(c.endDate)) - Date.parse(today())) / 86400000) + 1)
+
+// Étapes triées par km, marquées atteintes selon la valeur affichée, et la prochaine à viser
+export const stageInfo = (stages = [], value = 0) => {
+  const list = [...stages].sort((a, b) => a.km - b.km).map(s => ({ ...s, reached: value >= s.km }))
+  const next = list.find(s => !s.reached)
+  return { list, next, remaining: next ? Math.round((next.km - value) * 10) / 10 : 0 }
+}
 
 // Affiche une date sans heure telle qu'elle a été saisie, quel que soit le fuseau du navigateur
 export const formatDay = (d, options) => new Date(d).toLocaleDateString('fr-CA', { ...options, timeZone: 'UTC' })
@@ -38,9 +52,10 @@ export const getProgress = (c, streaks, memberId) => {
     const who = mine ? 'mes km' : `meilleur : ${shown.name || '—'}`
     const finishers = c.memberKm?.filter(m => m.km >= c.goalKm).length || 0
     const pct = percent(shown.km, c.goalKm)
-    return { pct, label: `${shown.km} / ${c.goalKm} km (${who}) · ${finishers} à l'objectif`, big: `${pct}%` }
+    return { pct, value: shown.km, label: `${shown.km} / ${c.goalKm} km (${who}) · ${finishers} à l'objectif`, big: `${pct}%` }
   }
 
-  const pct = percent(c.currentKm, c.goalKm)
-  return { pct, label: `${c.currentKm?.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
+  const km = Math.round((c.currentKm || 0) * 10) / 10
+  const pct = percent(km, c.goalKm)
+  return { pct, value: km, label: `${km.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
 }

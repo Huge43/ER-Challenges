@@ -3,7 +3,8 @@ import mongoose from 'mongoose'
 
 const runSchema = new mongoose.Schema({
   member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
-  challenge: { type: mongoose.Schema.Types.ObjectId, ref: 'Challenge', required: true },
+  // Un run compte pour tous les challenges actifs dont la période contient sa date
+  challenges: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Challenge' }], index: true },
   km: { type: Number, default: 0 },
   note: { type: String, default: '' },
   date: { type: Date, default: Date.now },
