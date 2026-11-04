@@ -68,6 +68,19 @@ router.post('/:id/reset-link', isAdmin, async (req, res) => {
   }
 })
 
+// PUT suspendre ou réactiver un compte (admin) : ses données restent, il ne peut plus se connecter
+router.put('/:id/suspend', isAdmin, async (req, res) => {
+  try {
+    if (req.params.id === req.member.id) return res.status(400).json({ message: 'Vous ne pouvez pas suspendre votre propre compte.' })
+    if (typeof req.body?.suspended !== 'boolean') return res.status(400).json({ message: 'Requête invalide.' })
+    const member = await Member.findByIdAndUpdate(req.params.id, { suspended: req.body.suspended }, { new: true }).select('-password')
+    if (!member) return res.status(404).json({ message: 'Membre introuvable.' })
+    res.json(member)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
+})
+
 // DELETE retirer un membre (admin)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {

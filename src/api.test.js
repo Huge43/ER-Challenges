@@ -190,3 +190,20 @@ test('maximum 2 challenges actifs', async () => {
 
 })
 
+test('suspension de compte', async () => {
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  // Suspension : sessions coupées, connexion refusée, données conservées
+  const bobToken = (await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).data.token
+  const bob = (await Member.findOne({ email: 'bob@test.com' }))._id.toString()
+  assert.equal((await call('PUT', `/members/${bob}/suspend`, bobToken, { suspended: true })).status, 403)
+  assert.equal((await call('PUT', `/members/${bob}/suspend`, admin, { suspended: true })).status, 200)
+  assert.equal((await call('GET', '/members', bobToken)).status, 401)
+  const login = await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })
+  assert.equal(login.status, 403)
+  assert.match(login.data.message, /suspendu/)
+  assert.ok((await call('GET', `/runs/member/${bob}`, admin)).data.length > 0, 'ses runs sont conservés')
+
+  await call('PUT', `/members/${bob}/suspend`, admin, { suspended: false })
+  assert.equal((await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).status, 200)
+})
+

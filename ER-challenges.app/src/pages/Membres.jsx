@@ -63,6 +63,20 @@ export default function Membres() {
     }
   }
 
+  // Suspendre plutôt que supprimer : le compte ne peut plus se connecter, ses activités restent
+  const handleSuspend = async (m) => {
+    const suspend = !m.suspended
+    if (suspend && !window.confirm(`Suspendre le compte de ${m.name} ? Il ne pourra plus se connecter, ses activités sont conservées.`)) return
+    try {
+      await api.put(`/members/${m._id}/suspend`, { suspended: suspend })
+      setSuccess(suspend ? `${m.name} est suspendu.` : `${m.name} est réactivé.`)
+      fetchMembers()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
   const handleResetLink = async (id, name) => {
     try {
       const res = await api.post(`/members/${id}/reset-link`)
@@ -262,6 +276,18 @@ export default function Membres() {
                           }}
                         >
                           Réinitialiser le mot de passe
+                        </button>
+                        <button
+                          onClick={() => handleSuspend(m)}
+                          style={{
+                            padding: '6px 14px', marginRight: '8px',
+                            background: m.suspended ? '#dcfce7' : '#fef3c7',
+                            color: m.suspended ? '#14532d' : '#92400e',
+                            border: 'none', borderRadius: '6px',
+                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          {m.suspended ? 'Réactiver' : 'Suspendre'}
                         </button>
                         <button
                           onClick={() => handleDelete(m._id, m.name)}
