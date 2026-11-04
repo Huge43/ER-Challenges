@@ -153,7 +153,12 @@ test('plusieurs challenges actifs, validation des dates, étapes', async () => {
   const dash = (await call('GET', '/dashboard', bobToken)).data
   assert.equal(dash.topContributors[nov._id][0].km, 17)
 
-  // Un streak tourne en parallèle : une validation à 0 km ne compte que pour lui
+  // Supprimer Novembre : les runs partagés restent comptés dans le Tour
+  await call('DELETE', `/challenges/${nov._id}`, admin)
+  assert.equal((await challenge(tour._id)).currentKm, 20)
+  assert.equal((await Member.findById(bob)).totalKm, 20)
+
+  // Novembre supprimé, une place se libère : un streak tourne en parallèle du Tour : une validation à 0 km ne compte que pour lui
   const streak = (await call('POST', '/challenges', admin, {
     name: 'Streak', type: 'streak', scope: 'individuel', goalDays: 7, startDate: today, endDate: shift(today, 6), active: true,
   })).data
@@ -162,12 +167,26 @@ test('plusieurs challenges actifs, validation des dates, étapes', async () => {
   assert.equal((await call('GET', `/challenges/${streak._id}/streak`, bobToken)).data.members[0].current, 1)
   assert.equal((await challenge(tour._id)).currentKm, 20)
 
-  // Supprimer Novembre : les runs partagés restent comptés dans le Tour
-  await call('DELETE', `/challenges/${nov._id}`, admin)
-  assert.equal((await challenge(tour._id)).currentKm, 20)
-  assert.equal((await Member.findById(bob)).totalKm, 20)
-
   // Raccourcir la période du Tour détache le run d'il y a 5 jours
   await call('PUT', `/challenges/${tour._id}`, admin, { startDate: shift(today, -2) })
   assert.equal((await challenge(tour._id)).currentKm, 17)
 })
+
+test('maximum 2 challenges actifs', async () => {
+  const today = clubToday()
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const actives = (await call('GET', '/challenges/active', admin)).data
+  assert.equal(actives.length, 2, 'le Tour et le Streak du test précédent sont actifs')
+
+  // Un 3e challenge actif est refusé, à la création comme à l'activation
+  const base = { type: 'distance', scope: 'collectif', goalKm: 100, startDate: today, endDate: shift(today, 5) }
+  const refused = await call('POST', '/challenges', admin, { ...base, name: 'Trop', active: true })
+  assert.equal(refused.status, 400)
+  assert.match(refused.data.message, /déjà actifs/)
+  const third = (await call('POST', '/challenges', admin, { ...base, name: 'Troisième', active: false })).data
+  assert.equal((await call('PUT', `/challenges/${third._id}/activate`, admin)).status, 400)
+  // Réactiver un challenge déjà actif reste possible
+  assert.equal((await call('PUT', `/challenges/${actives[0]._id}/activate`, admin)).status, 200)
+
+})
+
