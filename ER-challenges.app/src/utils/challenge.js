@@ -60,10 +60,10 @@ export const getProgress = (c, streaks, memberId) => {
     const who = mine ? 'mes km' : `meilleur : ${shown.name || '—'}`
     const finishers = c.memberKm?.filter(m => m.km >= c.goalKm).length || 0
     const pct = percent(shown.km, c.goalKm)
-    return { pct, value: shown.km, label: `${fmtKm(shown.km)} / ${fmtKm(c.goalKm)} km (${who}) · ${finishers} à l'objectif`, big: `${pct}%` }
+    return { pct, value: shown.km, label: `${fmtKm(shown.km)} / ${fmtKm(c.goalKm)} km (${who}) · ${finishers} à l'objectif`, big: `${fmtKm(pct)} %` }
   }
 
   const km = c.currentKm || 0
   const pct = percent(km, c.goalKm)
-  return { pct, value: km, label: `${fmtKm(km)} / ${fmtKm(c.goalKm)} km`, big: `${pct}%` }
+  return { pct, value: km, label: `${fmtKm(km)} / ${fmtKm(c.goalKm)} km`, big: `${fmtKm(pct)} %` }
 }

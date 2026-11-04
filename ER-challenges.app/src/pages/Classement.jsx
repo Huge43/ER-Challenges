@@ -2,428 +2,155 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api'
 import { fmtKm } from '../utils/challenge'
-import useIsMobile from '../hooks/useIsMobile'
+import { Icon, Avatar, Bar, PageTitle, Loading } from '../components/ui'
+import { C, shadow } from '../components/theme'
 
-const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
-const TEXT_COLORS = ['#1e3a8a', '#3730a3', '#9d174d', '#14532d', '#92400e', '#991b1b', '#581c87', '#0c4a6e', '#14532d', '#581c87']
-const MEDALS = ['🥇', '🥈', '🥉']
-
-const PALIERS_KM = [
-  { value: 50, label: 'Premiers pas', icon: '🌱' },
-  { value: 100, label: 'En rythme', icon: '🏃' },
-  { value: 250, label: 'Endurant', icon: '💪' },
-  { value: 500, label: 'Marathonien', icon: '🔥' },
-  { value: 1000, label: 'Légende', icon: '👑' },
+const TABS = [
+  { key: 'km', label: 'Kilomètres', icon: 'route' },
+  { key: 'streak', label: 'Séries', icon: 'local_fire_department' },
 ]
-
-const PALIERS_STREAK = [
-  { value: 3, label: 'Étincelle', icon: '✨' },
-  { value: 7, label: 'Une semaine', icon: '🔥' },
-  { value: 14, label: 'Enflammé', icon: '⚡' },
-  { value: 21, label: 'Inarrêtable', icon: '🚀' },
-  { value: 30, label: 'Machine', icon: '👑' },
-]
-
-const getPalierProgress = (value, paliers) => {
-  const next = paliers.find(p => p.value > value)
-  if (!next) return { pct: 100 }
-  const prev = [...paliers].reverse().find(p => p.value <= value)
-  const base = prev ? prev.value : 0
-  return { pct: Math.round(((value - base) / (next.value - base)) * 100) }
-}
 
 export default function Classement() {
   const [members, setMembers] = useState([])
   const [streaks, setStreaks] = useState([])
   const [actives, setActives] = useState([])
-  const [activeChallenge, setActiveChallenge] = useState(null)
-  const [challengeRanking, setChallengeRanking] = useState(null)
-  const [view, setView] = useState('global')
+  const [scope, setScope] = useState('global') // 'global' ou l'id d'un challenge actif
+  const [ranking, setRanking] = useState(null)
   const [tab, setTab] = useState('km')
   const [loading, setLoading] = useState(true)
-  const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
-  const isMobile = useIsMobile()
+  const me = JSON.parse(localStorage.getItem('member') || '{}')
 
   useEffect(() => {
-    Promise.all([
-      api.get('/members'),
-      api.get('/members/streaks'),
-      api.get('/challenges/active'),
-    ]).then(([membersRes, streaksRes, activeRes]) => {
-      setMembers(membersRes.data)
-      setStreaks(streaksRes.data)
-      setActives(activeRes.data)
-      if (activeRes.data[0]) selectChallenge(activeRes.data[0])
-    }).catch(err => console.error(err))
+    Promise.all([api.get('/members'), api.get('/members/streaks'), api.get('/challenges/active')])
+      .then(([membersRes, streaksRes, activeRes]) => {
+        setMembers(membersRes.data)
+        setStreaks(streaksRes.data)
+        setActives(activeRes.data)
+      })
+      .catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
 
-  // Plusieurs challenges peuvent être actifs : on affiche le classement de celui choisi
-  function selectChallenge(c) {
-    setActiveChallenge(c)
-    setChallengeRanking(null)
-    api.get(`/challenges/${c._id}/ranking`)
-      .then(res => setChallengeRanking(res.data))
-      .catch(err => console.error(err))
-  }
+  // Classement d'un challenge actif, chargé à la sélection
+  useEffect(() => {
+    if (scope === 'global') return
+    api.get(`/challenges/${scope}/ranking`).then(res => setRanking(res.data)).catch(err => console.error(err))
+  }, [scope])
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <p style={{ color: '#64748b', fontSize: '14px' }}>Chargement...</p>
-    </div>
-  )
+  if (loading) return <Loading />
 
-  const isGlobal = view === 'global'
-  const isKm = tab === 'km'
-  const isCollectiveStreak = !isGlobal && challengeRanking?.challenge?.scope === 'collectif'
-
-  let list, unit, getValue
-
-  if (isGlobal) {
-    list = isKm ? members : streaks
-    unit = isKm ? 'km' : 'jours'
-    // Streaks global : le plus long streak de chacun (le streak en cours retombe à 0 dès qu'un jour manque)
-    getValue = (m) => isKm ? m.totalKm : m.longest
+  // Liste affichée : { id, name, value } triée, et l'unité
+  let list, unit
+  if (scope === 'global') {
+    unit = tab === 'km' ? 'km' : 'jours'
+    // Séries : le plus long streak de chacun (le streak en cours retombe à 0 dès qu'un jour manque)
+    list = tab === 'km'
+      ? members.map(m => ({ id: m._id, name: m.name, value: m.totalKm }))
+      : streaks.map(m => ({ id: m._id, name: m.name, value: m.longest }))
   } else {
-    const isStreakChallenge = challengeRanking?.challenge?.type === 'streak'
-    list = challengeRanking?.ranking || []
-    unit = isStreakChallenge ? 'jours' : 'km'
-    getValue = (m) => isStreakChallenge ? m.current : m.value
+    const isStreak = ranking?.challenge?.type === 'streak'
+    unit = isStreak ? 'jours' : 'km'
+    list = (ranking?.ranking || []).map(m => ({ id: m.memberId, name: m.name, value: isStreak ? m.current : m.value }))
   }
+  list = list.filter(m => m.value > 0).sort((a, b) => b.value - a.value)
 
-  const paliers = isKm ? PALIERS_KM : PALIERS_STREAK
   const fmt = (v) => unit === 'km' ? fmtKm(v) : v
-  // Le nom mène au profil du membre (activités et trophées)
-  const profileLink = (m, color) => (
-    <Link to={`/profil/${m._id || m.memberId}`} style={{ color, textDecoration: 'none' }}
-      onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
-      onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}>
-      {m.name}
-    </Link>
-  )
-  const myRank = list.findIndex(m => (m._id || m.memberId) === currentMember.id) + 1
+  const unitLong = unit === 'km' ? 'kilomètres' : 'jours'
+  const max = list[0]?.value || 1
+  const myPlace = list.findIndex(m => m.id === me.id) + 1
+  const label = (m) => m.id === me.id ? `${m.name.split(' ')[0]} · vous` : m.name.split(' ')[0]
+
+  // Podium dans l'ordre visuel : 2e, 1er, 3e
+  const podium = [list[1] && { ...list[1], rank: 2 }, list[0] && { ...list[0], rank: 1 }, list[2] && { ...list[2], rank: 3 }]
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div>
+      <PageTitle eyebrow="Classement" title="Le collectif se dépasse." subtitle="Un peu de défi. Beaucoup de motivation." />
 
-      {/* Header */}
-      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-            Classement
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>
-            {isGlobal
-              ? 'Classement général de toute la communauté.'
-              : `Classement du challenge : ${activeChallenge?.name || '—'}`}
-          </p>
-        </div>
-        {myRank > 0 && !isCollectiveStreak && (
-          <div style={{
-            background: '#fff', border: '1px solid #e8edf5',
-            borderRadius: '12px', padding: '1rem 1.5rem', textAlign: isMobile ? 'left' : 'right',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-          }}>
-            <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
-              Mon rang
-            </p>
-            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '32px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
-              #{myRank}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Onglets principaux : Global / Challenge actif */}
-      <div style={{
-        display: 'inline-flex', gap: '4px', background: '#f1f5f9',
-        padding: '4px', borderRadius: '12px', marginBottom: '1rem', flexWrap: 'wrap',
-      }}>
-        <button onClick={() => setView('global')} style={{
-          padding: '10px 24px', borderRadius: '9px', border: 'none',
-          background: view === 'global' ? '#fff' : 'transparent',
-          color: view === 'global' ? '#1e2a4a' : '#64748b',
-          fontSize: '14px', fontWeight: view === 'global' ? 700 : 500, cursor: 'pointer',
-          boxShadow: view === 'global' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-        }}>
-          🌍 Global
-        </button>
-        <button
-          onClick={() => activeChallenge && setView('challenge')}
-          disabled={!activeChallenge}
-          style={{
-            padding: '10px 24px', borderRadius: '9px', border: 'none',
-            background: view === 'challenge' ? '#fff' : 'transparent',
-            color: !activeChallenge ? '#cbd5e1' : (view === 'challenge' ? '#1e2a4a' : '#64748b'),
-            fontSize: '14px', fontWeight: view === 'challenge' ? 700 : 500,
-            cursor: activeChallenge ? 'pointer' : 'not-allowed',
-            boxShadow: view === 'challenge' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-          }}>
-          🎯 {actives.length > 1 ? 'Challenges actifs' : 'Challenge actif'}
-        </button>
-      </div>
-
-      {/* Choix du challenge quand plusieurs sont actifs */}
-      {!isGlobal && actives.length > 1 && (
-        <select
-          aria-label="Challenge à afficher"
-          value={activeChallenge?._id}
-          onChange={e => selectChallenge(actives.find(c => c._id === e.target.value))}
-          style={{
-            display: 'block', marginBottom: '1.5rem', padding: '10px 14px',
-            border: '1px solid #e2e8f0', borderRadius: '10px', background: '#fff',
-            fontSize: '14px', fontWeight: 600, color: '#1e2a4a', cursor: 'pointer',
-          }}
-        >
-          {actives.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-        </select>
-      )}
-
-      {/* Sous-onglets Kilomètres / Streaks — seulement en vue Global */}
-      {isGlobal && (
-        <div style={{
-          display: 'inline-flex', gap: '4px', background: '#f1f5f9',
-          padding: '4px', borderRadius: '12px', marginBottom: '2rem', marginLeft: isMobile ? 0 : '12px',
-        }}>
-          {[
-            { key: 'km', label: '🏃 Kilomètres' },
-            { key: 'streak', label: '🔥 Streaks' },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              padding: '8px 18px', borderRadius: '9px', border: 'none',
-              background: tab === t.key ? '#fff' : 'transparent',
-              color: tab === t.key ? '#1e2a4a' : '#64748b',
-              fontSize: '13px', fontWeight: tab === t.key ? 700 : 500, cursor: 'pointer',
-              boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+      {/* Kilomètres / Séries (classement général) */}
+      {scope === 'global' && (
+        <div role="tablist" style={{ display: 'flex', background: '#eceef2', borderRadius: '16px', padding: '5px', marginBottom: '1.1rem' }}>
+          {TABS.map(t => (
+            <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              background: tab === t.key ? C.card : 'transparent', boxShadow: tab === t.key ? shadow : 'none',
+              color: tab === t.key ? C.orange : C.muted, fontSize: '14px', fontWeight: 600,
             }}>
-              {t.label}
+              <Icon name={t.icon} size={20} /> {t.label}
             </button>
           ))}
         </div>
       )}
 
-      {!isGlobal && <div style={{ marginBottom: '2rem' }} />}
-
-      {isCollectiveStreak ? (
-        <>
-          {/* Grand encart streak du groupe */}
-          <div style={{
-            background: 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #e67e22 100%)',
-            borderRadius: '20px', padding: isMobile ? '2rem' : '3rem',
-            textAlign: 'center', marginBottom: '2rem',
-            position: 'relative', overflow: 'hidden',
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', position: 'relative' }}>
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Classement à afficher</span>
+          <select value={scope} onChange={e => { setRanking(null); setScope(e.target.value) }} style={{
+            appearance: 'none', border: 'none', background: 'transparent', fontSize: '15px', fontWeight: 600,
+            color: C.text, fontFamily: 'inherit', cursor: 'pointer', paddingRight: '22px',
           }}>
-            <p style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: '1rem' }}>
-              Streak du groupe
-            </p>
-            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '56px' : '72px', fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-              {challengeRanking?.collectiveStreak?.current || 0} 🔥
-            </p>
-            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>
-              jours consécutifs {challengeRanking?.challenge?.goalDays ? `sur ${challengeRanking.challenge.goalDays}` : ''}
-            </p>
-            {challengeRanking?.collectiveStreak?.longest > 0 && (
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>
-                Record du groupe : {challengeRanking.collectiveStreak.longest} jours
-              </p>
-            )}
-            {challengeRanking?.challenge?.goalDays > 0 && (
-              <div style={{ maxWidth: '400px', margin: '1.5rem auto 0' }}>
-                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${Math.min(100, ((challengeRanking.collectiveStreak.current / challengeRanking.challenge.goalDays) * 100))}%`,
-                    background: '#fff', borderRadius: '99px',
-                  }} />
-                </div>
-              </div>
-            )}
-          </div>
+            <option value="global">Classement général</option>
+            {actives.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+          </select>
+          <Icon name="expand_more" size={20} color={C.text} style={{ position: 'absolute', right: 0, pointerEvents: 'none' }} />
+        </label>
+        <span style={{ fontSize: '12px', color: C.muted }}>{list.length} runner{list.length > 1 ? 's' : ''}</span>
+      </div>
 
-          {/* Liste des contributeurs */}
-          <div style={{
-            background: '#fff', borderRadius: '16px',
-            border: '1px solid #e8edf5', overflow: 'hidden',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-          }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-              <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
-                Contributeurs
-              </p>
-              <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-                Chaque membre et son nombre de jours actifs dans ce challenge
-              </p>
-            </div>
-            {(challengeRanking?.contributors || []).length === 0 ? (
-              <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '14px', color: '#94a3b8' }}>Aucune contribution pour l'instant.</p>
-              </div>
-            ) : (
-              challengeRanking.contributors.map((m, i) => {
-                const isMe = m.memberId === currentMember.id
-                return (
-                  <div key={m.memberId} style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '14px 1.5rem',
-                    borderTop: i > 0 ? '1px solid #f1f5f9' : 'none',
-                    background: isMe ? '#fffbeb' : 'transparent',
-                  }}>
-                    <div style={{
-                      width: '36px', height: '36px', borderRadius: '50%',
-                      background: COLORS[i % 10], color: TEXT_COLORS[i % 10],
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', fontWeight: 700, flexShrink: 0,
-                    }}>
-                      {m.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span style={{ flex: 1, fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                      {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
-                    </span>
-                    <span style={{
-                      padding: '4px 12px', borderRadius: '6px',
-                      background: '#fff7ed', color: '#e67e22',
-                      fontSize: '13px', fontWeight: 700,
-                    }}>
-                      {m.daysActive} {m.daysActive > 1 ? 'jours actifs' : 'jour actif'}
-                    </span>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </>
+      {scope !== 'global' && !ranking ? <Loading /> : list.length === 0 ? (
+        <p style={{ fontSize: '14px', color: C.muted, textAlign: 'center', padding: '2rem 0' }}>Aucune activité pour l'instant.</p>
       ) : (
         <>
-          {/* Podium top 3 */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-            {list.slice(0, 3).map((m, i) => (
-              <div key={m._id || m.memberId} style={{
-                background: i === 0 ? '#0f1f3d' : '#fff',
-                border: `1px solid ${i === 0 ? 'transparent' : '#e8edf5'}`,
-                borderRadius: '16px', padding: '1.5rem', textAlign: 'center',
-                boxShadow: i === 0 ? '0 4px 20px rgba(15,31,61,0.2)' : '0 1px 4px rgba(0,0,0,0.05)',
-                transform: !isMobile && i === 0 ? 'translateY(-6px)' : 'none',
-              }}>
-                <div style={{ fontSize: '28px', marginBottom: '10px' }}>{MEDALS[i]}</div>
-                <div style={{
-                  width: '52px', height: '52px', borderRadius: '50%',
-                  background: i === 0 ? 'rgba(255,255,255,0.15)' : COLORS[i],
-                  color: i === 0 ? '#fff' : TEXT_COLORS[i],
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '16px', fontWeight: 700, margin: '0 auto 10px',
-                }}>
-                  {m.name.split(' ').map(n => n[0]).join('')}
+          {/* Podium */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', alignItems: 'end', marginBottom: '1.75rem' }}>
+            {podium.map((m, i) => m ? (
+              <Link key={m.id} to={`/profil/${m.id}`} style={{ textDecoration: 'none', textAlign: 'center' }}>
+                {m.rank === 1 && <Icon name="crown" size={26} color={C.orange} />}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '-22px', position: 'relative' }}>
+                  <Avatar name={m.name} size={m.rank === 1 ? 62 : 54} ring={m.rank === 1 ? C.orange : '#fff'} />
                 </div>
-                <p style={{ fontSize: '15px', fontWeight: 600, color: i === 0 ? '#fff' : '#1e2a4a', marginBottom: '4px' }}>
-                  {profileLink(m, i === 0 ? '#fff' : '#1e2a4a')}
-                </p>
-                <p style={{
-                  fontSize: '22px', fontFamily: 'Poppins, sans-serif', fontWeight: 700,
-                  color: i === 0 ? '#e67e22' : (unit === 'km' ? '#1e3a8a' : '#e67e22'),
+                <div style={{
+                  background: m.rank === 1 ? C.navy : C.card, boxShadow: shadow,
+                  borderRadius: '16px 16px 0 0', padding: `${m.rank === 1 ? 2 : 1.8}rem 0.4rem ${m.rank === 1 ? 1.4 : 0.9}rem`,
                 }}>
-                  {fmt(getValue(m))} {unit} {unit === 'jours' && getValue(m) > 0 && '🔥'}
-                </p>
-              </div>
-            ))}
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: m.rank === 1 ? '#fff' : C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label(m)}</p>
+                  <p style={{ fontSize: '22px', fontWeight: 700, color: m.rank === 1 ? '#fff' : C.text, margin: '2px 0' }}>{fmt(m.value)}</p>
+                  <p style={{ fontSize: '11px', color: m.rank === 1 ? 'rgba(255,255,255,0.7)' : C.muted }}>{unitLong}</p>
+                  <p style={{ fontSize: '20px', fontWeight: 700, color: m.rank === 1 ? C.orange : C.faint, marginTop: '6px' }}>{m.rank}</p>
+                </div>
+              </Link>
+            ) : <div key={i} />)}
           </div>
 
-          {/* Tableau complet */}
-          <div style={{
-            background: '#fff', borderRadius: '16px',
-            border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-          }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-              <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '20px', fontWeight: 600, color: '#1e2a4a' }}>
-                {isGlobal ? 'Tous les elites' : `Participants — ${activeChallenge?.name || ''}`}
-              </p>
-            </div>
-
-            {list.length === 0 ? (
-              <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '14px', color: '#94a3b8' }}>
-                  {isGlobal ? 'Aucune donnée.' : 'Aucune activité soumise pour ce challenge encore.'}
-                </p>
-              </div>
-            ) : (
-              <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fb' }}>
-                    <th style={{ padding: '12px 1.5rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Rang</th>
-                    <th style={{ padding: '12px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Elite</th>
-                    {isGlobal && (
-                      <th style={{ padding: '12px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Progression</th>
-                    )}
-                    <th style={{ padding: '12px 1.5rem', textAlign: 'right', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>
-                      {unit === 'km' ? 'Total km' : isGlobal ? 'Meilleur streak' : 'Streak'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((m, i) => {
-                    const mid = m._id || m.memberId
-                    const isMe = mid === currentMember.id
-                    const value = getValue(m)
-                    const barWidth = getPalierProgress(value, paliers).pct
-                    return (
-                      <tr key={mid} style={{
-                        background: isMe ? '#fffbeb' : 'transparent',
-                        borderTop: '1px solid #f1f5f9',
-                      }}
-                        onMouseEnter={e => { if (!isMe) e.currentTarget.style.background = '#f8faff' }}
-                        onMouseLeave={e => { if (!isMe) e.currentTarget.style.background = 'transparent' }}
-                      >
-                        <td style={{ padding: '14px 1.5rem', width: '60px' }}>
-                          <span style={{ fontSize: i < 3 ? '18px' : '14px', color: '#64748b', fontWeight: 600 }}>
-                            {MEDALS[i] || `#${i + 1}`}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                              width: '36px', height: '36px', borderRadius: '50%',
-                              background: COLORS[i % 10], color: TEXT_COLORS[i % 10],
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '12px', fontWeight: 700, flexShrink: 0,
-                            }}>
-                              {m.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            <div>
-                              <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                                {profileLink(m, '#1e2a4a')} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
-                              </p>
-                              {m.email && <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>}
-                            </div>
-                          </div>
-                        </td>
-                        {isGlobal && (
-                          <td style={{ padding: '14px 1rem', width: '200px' }}>
-                            <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
-                              <div style={{
-                                height: '100%', width: `${barWidth}%`,
-                                background: isMe ? '#e67e22' : (unit === 'km' ? '#1e3a8a' : '#e67e22'),
-                                borderRadius: '99px', transition: 'width 0.6s ease',
-                              }} />
-                            </div>
-                          </td>
-                        )}
-                        <td style={{ padding: '14px 1.5rem', textAlign: 'right' }}>
-                          <span style={{
-                            display: 'inline-block', padding: '4px 12px',
-                            background: isMe ? '#fef3c7' : (unit === 'km' ? '#eff6ff' : '#fff7ed'),
-                            color: isMe ? '#92400e' : (unit === 'km' ? '#1e3a8a' : '#e67e22'),
-                            borderRadius: '6px', fontSize: '13px', fontWeight: 700,
-                          }}>
-                            {fmt(value)} {unit} {unit === 'jours' && value > 0 && '🔥'}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.85rem' }}>
+            <h2 style={{ fontSize: '19px', fontWeight: 700, color: C.text }}>Tous les runners</h2>
+            {myPlace > 0 && <span style={{ fontSize: '13px', fontWeight: 600, color: C.orange }}>Votre place : {myPlace}{myPlace === 1 ? 'er' : 'e'}</span>}
           </div>
+
+          {list.map((m, i) => {
+            const isMe = m.id === me.id
+            return (
+              <Link key={m.id} to={`/profil/${m.id}`} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', marginBottom: '10px',
+                background: isMe ? C.orangeSoft : C.card, border: `1px solid ${isMe ? '#f6c79c' : C.line}`,
+                borderRadius: '16px', padding: '12px 14px',
+              }}>
+                <span style={{ width: 18, fontSize: '14px', fontWeight: 600, color: isMe ? C.orange : C.muted }}>{i + 1}</span>
+                <Avatar name={m.name} size={38} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: C.text, marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {m.name}{isMe && ' · vous'}
+                  </span>
+                  <Bar pct={(m.value / max) * 100} height={6} />
+                </span>
+                <span style={{ textAlign: 'right', minWidth: 52 }}>
+                  <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: C.text }}>{fmt(m.value)}</span>
+                  <span style={{ display: 'block', fontSize: '11px', color: C.muted }}>{unit === 'km' ? 'km' : 'j'}</span>
+                </span>
+              </Link>
+            )
+          })}
         </>
       )}
     </div>

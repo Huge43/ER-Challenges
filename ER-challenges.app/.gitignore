@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Maquettes de design : gardées en local, hors du dépôt
+Maquette ER-Challenges/

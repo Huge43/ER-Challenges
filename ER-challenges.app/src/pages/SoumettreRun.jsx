@@ -2,44 +2,54 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { containsDay, formatDay, today, fmtKm } from '../utils/challenge'
+import { Icon, Card, Avatar, PageTitle, Label, Notice, ErrorBox, PrimaryButton, Loading } from '../components/ui'
+import { C } from '../components/theme'
+
+const quote = (list) => list.map(c => `« ${c.name} »`).join(' et ')
 
 export default function SoumettreRun() {
   const [form, setForm] = useState({ km: '', note: '', date: today() })
   const [actives, setActives] = useState([])
+  const [monthKm, setMonthKm] = useState(0)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [loadingChallenge, setLoadingChallenge] = useState(true)
   const navigate = useNavigate()
   const member = JSON.parse(localStorage.getItem('member') || '{}')
-  const [loadingChallenge, setLoadingChallenge] = useState(true)
 
   useEffect(() => {
-    api.get('/challenges/active')
-      .then(res => setActives(res.data))
+    Promise.all([api.get('/challenges/active'), api.get(`/runs/member/${member.id}`)])
+      .then(([activeRes, runsRes]) => {
+        setActives(activeRes.data)
+        const month = today().slice(0, 7)
+        setMonthKm(runsRes.data.filter(r => r.date.slice(0, 7) === month).reduce((s, r) => s + r.km, 0))
+      })
       .catch(err => console.error(err))
       .finally(() => setLoadingChallenge(false))
-  }, [])
+  }, [member.id])
 
   // Le run comptera pour tous les challenges actifs dont la période contient la date choisie
   const matching = actives.filter(c => containsDay(c, form.date))
   const hasStreak = matching.some(c => c.type === 'streak')
   const distances = matching.filter(c => c.type !== 'streak')
   const isStreak = hasStreak && distances.length === 0
-  const km = Number(form.km || 0)
+  const km = Number(String(form.km).replace(',', '.') || 0)
 
   // Bornes du sélecteur : la période couverte par les challenges actifs, sans dépasser aujourd'hui
   const minDate = actives.map(c => c.startDate.slice(0, 10)).sort()[0]
   const maxEnd = actives.map(c => c.endDate.slice(0, 10)).sort().at(-1)
   const maxDate = maxEnd && maxEnd < today() ? maxEnd : today()
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setError('')
     if (matching.length === 0) {
       setError(`Aucun challenge actif ne couvre le ${formatDay(form.date, { day: 'numeric', month: 'long' })}.`)
       return
     }
     // Sans streak à valider, une distance est obligatoire
-    if (!hasStreak && (!form.km || isNaN(form.km) || km <= 0)) {
+    if (!hasStreak && !(km > 0)) {
       setError('Entrez une distance valide.')
       return
     }
@@ -55,249 +65,116 @@ export default function SoumettreRun() {
     }
   }
 
-  const inputStyle = {
-    width: '100%', padding: '13px 16px',
-    border: '1px solid #e2e8f0', borderRadius: '10px',
-    fontSize: '14px', color: '#1e2a4a',
-    background: '#f8fafc', outline: 'none',
-    transition: 'border 0.2s',
-  }
-
-  const labelStyle = {
-    display: 'block', fontSize: '11px', fontWeight: 700,
-    letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: '#1e2a4a', marginBottom: '8px',
-  }
-
   if (success) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '1rem' }}>{isStreak ? '🔥' : '🎉'}</div>
-        <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
-          {isStreak ? 'Journée validée !' : 'Course soumise !'}
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748b' }}>
-          {isStreak ? 'Ton streak continue. Redirection...' : 'Tes km ont été ajoutés aux challenges. Redirection...'}
-        </p>
-      </div>
+    <div style={{ textAlign: 'center', paddingTop: '4rem' }}>
+      <span style={{ width: 88, height: 88, borderRadius: '50%', background: C.orangeSoft, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={isStreak ? 'local_fire_department' : 'celebration'} size={44} color={C.orange} />
+      </span>
+      <h2 style={{ fontSize: '26px', fontWeight: 700, color: C.text, margin: '1.25rem 0 6px' }}>
+        {isStreak ? 'Journée validée !' : 'Sortie enregistrée !'}
+      </h2>
+      <p style={{ fontSize: '14px', color: C.muted }}>
+        {isStreak ? 'Votre série continue.' : 'Vos kilomètres font avancer le collectif.'}
+      </p>
     </div>
   )
 
-  if (loadingChallenge) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <p style={{ color: '#64748b', fontSize: '14px' }}>Chargement...</p>
-    </div>
-  )
+  if (loadingChallenge) return <Loading />
 
-  // Aucun challenge actif (aucun activé, ou tous en pause/terminés)
   if (actives.length === 0) return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-          Soumettre une activité
-        </h1>
-      </div>
-      <div style={{
-        background: '#fff', borderRadius: '16px', border: '2px dashed #e2e8f0',
-        padding: '3.5rem 2rem', textAlign: 'center',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <div style={{ fontSize: '40px', marginBottom: '1rem' }}>⏸️</div>
-        <p style={{ fontSize: '16px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-          Aucun challenge en cours
+    <>
+      <PageTitle eyebrow="Votre activité" title="Une sortie de plus." />
+      <Card style={{ textAlign: 'center', padding: '2.5rem 1.25rem' }}>
+        <Icon name="pause_circle" size={40} color={C.orange} />
+        <p style={{ fontSize: '16px', fontWeight: 600, color: C.text, margin: '10px 0 6px' }}>Aucun défi en cours</p>
+        <p style={{ fontSize: '14px', color: C.muted, lineHeight: 1.5 }}>
+          Revenez quand un défi sera lancé pour enregistrer vos sorties.
         </p>
-        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6 }}>
-          Il n'y a pas de challenge actif pour le moment. Reviens quand un défi sera lancé pour enregistrer tes activités !
-        </p>
-      </div>
-    </div>
+      </Card>
+    </>
   )
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-          {isStreak ? 'Valider ma journée' : 'Soumettre une course'}
-        </h1>
-        <p style={{ fontSize: '14px', color: '#64748b' }}>
-          {isStreak ? 'Enregistre ton activité du jour pour maintenir ton streak 🔥' : 'Tes kilomètres comptent pour tous les challenges en cours à cette date.'}
-        </p>
-      </div>
+    <form onSubmit={handleSubmit}>
+      <PageTitle
+        eyebrow="Votre activité"
+        title={isStreak ? 'Une journée de plus.' : 'Une sortie de plus.'}
+        subtitle={isStreak ? 'Validez votre journée pour garder votre série.' : 'Bravo ! Ajoutez vos kilomètres au collectif.'}
+      />
 
       {/* Carte membre */}
       <div style={{
-        background: '#0f1f3d', borderRadius: '14px',
-        padding: '1.25rem 1.5rem', marginBottom: '1.5rem',
+        background: C.navy, borderRadius: '20px', padding: '1rem 1.1rem', marginBottom: '1.5rem',
         display: 'flex', alignItems: 'center', gap: '14px',
       }}>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '50%',
-          background: '#e67e22', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0,
-        }}>
-          {member.name?.split(' ').map(n => n[0]).join('') || 'ER'}
+        <Avatar name={member.name} size={56} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff' }}>{member.name}</p>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{fmtKm(monthKm)} km ce mois-ci</p>
         </div>
-        <div>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{member.name}</p>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-            {matching.length
-              ? `Compte pour : ${matching.map(c => c.name).join(', ')}`
-              : 'Aucun challenge actif à cette date'}
-          </p>
-        </div>
+        <span style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', borderRadius: '99px', padding: '4px 10px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em' }}>
+          {member.role === 'admin' ? 'ADMIN' : 'MEMBRE'}
+        </span>
       </div>
 
-      {/* Formulaire */}
+      {error && <ErrorBox>{error}</ErrorBox>}
+
+      {/* Distance : masquée si seuls des streaks sont concernés */}
+      {!isStreak && (
+        <>
+          <Label htmlFor="run-km" hint={hasStreak ? 'Facultatif pour valider votre série' : undefined}>Distance parcourue</Label>
+          <label htmlFor="run-km" style={{
+            display: 'block', background: C.card, border: `1.5px solid ${C.orange}`, borderRadius: '18px',
+            padding: '1rem 1.25rem', marginBottom: '1.5rem', cursor: 'text',
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              <input id="run-km" inputMode="decimal" placeholder="0" value={form.km}
+                onChange={e => setForm({ ...form, km: e.target.value.replace(/[^\d.,]/g, '') })}
+                style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: '48px', fontWeight: 700, color: C.text, fontFamily: 'inherit' }} />
+              <span style={{ fontSize: '20px', color: C.muted }}>km</span>
+            </span>
+            <span style={{ display: 'block', fontSize: '12px', color: C.muted, marginTop: '4px' }}>Chaque kilomètre compte.</span>
+          </label>
+        </>
+      )}
+
+      <Label htmlFor="run-date">{isStreak ? 'Date de l\'activité' : 'Date de la sortie'}</Label>
       <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', padding: '2rem',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        display: 'flex', alignItems: 'center', gap: '12px', background: C.card, border: `1px solid ${C.line}`,
+        borderRadius: '14px', padding: '0 14px', marginBottom: '1.5rem',
       }}>
-
-        {error && (
-          <div role="alert" style={{
-            background: '#fee2e2', border: '1px solid #fecaca',
-            borderRadius: '8px', padding: '12px 16px',
-            fontSize: '13px', color: '#991b1b', marginBottom: '1.5rem',
-          }}>
-            {error}
-          </div>
-        )}
-
-        {/* Distance — masquée si seuls des streaks sont concernés */}
-        {!isStreak && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="run-km" style={labelStyle}>
-              Distance (km)
-              {hasStreak && <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (optionnel pour valider ton streak)</span>}
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="run-km"
-                type="number"
-                placeholder="Ex: 10.5"
-                min="0"
-                step="0.1"
-                value={form.km}
-                onChange={e => setForm({ ...form, km: e.target.value })}
-                style={{ ...inputStyle, paddingRight: '50px' }}
-                onFocus={e => e.target.style.borderColor = '#e67e22'}
-                onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-              />
-              <span style={{
-                position: 'absolute', right: '14px', top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '13px', fontWeight: 600, color: '#94a3b8',
-              }}>
-                km
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Date */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="run-date" style={labelStyle}>{isStreak ? 'Date de l\'activité' : 'Date du run'}</label>
-          <input
-            id="run-date"
-            type="date"
-            value={form.date}
-            min={minDate}
-            max={maxDate}
-            onChange={e => setForm({ ...form, date: e.target.value })}
-            style={inputStyle}
-            onFocus={e => e.target.style.borderColor = '#e67e22'}
-            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-          />
-          {matching.length === 0 && (
-            <p style={{ fontSize: '12px', color: '#991b1b', marginTop: '6px' }}>
-              Aucun challenge actif ne couvre cette date. Périodes ouvertes : {actives.map(c =>
-                `${c.name} (${formatDay(c.startDate, { day: 'numeric', month: 'short' })} → ${formatDay(c.endDate, { day: 'numeric', month: 'short' })})`).join(', ')}.
-            </p>
-          )}
-        </div>
-
-        {/* Note */}
-        <div style={{ marginBottom: '2rem' }}>
-          <label htmlFor="run-note" style={labelStyle}>Note <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel)</span></label>
-          <textarea
-            id="run-note"
-            placeholder={isStreak ? 'Ex: 10 pages lues, chapitre 3 terminé...' : 'Ex: Trail Mont-Royal, sortie longue du dimanche...'}
-            value={form.note}
-            onChange={e => setForm({ ...form, note: e.target.value })}
-            rows={3}
-            style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }}
-            onFocus={e => e.target.style.borderColor = '#e67e22'}
-            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-          />
-        </div>
-
-        {/* Aperçu : streaks validés */}
-        {hasStreak && (
-          <div style={{
-            background: '#fff7ed', border: '1px solid #fed7aa',
-            borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.5rem',
-            display: 'flex', alignItems: 'center', gap: '12px',
-          }}>
-            <span style={{ fontSize: '20px' }}>🔥</span>
-            <div>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#9a3412' }}>
-                Cette activité valide ta journée de streak
-              </p>
-              {matching.filter(c => c.type === 'streak').map(c => (
-                <p key={c._id} style={{ fontSize: '12px', color: '#e67e22', marginTop: '2px' }}>
-                  {c.name} : objectif {c.goalDays} jours consécutifs
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Aperçu : km ajoutés à chaque challenge distance */}
-        {km > 0 && distances.length > 0 && (
-          <div style={{
-            background: '#f0fdf4', border: '1px solid #bbf7d0',
-            borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.5rem',
-            display: 'flex', alignItems: 'center', gap: '12px',
-          }}>
-            <span style={{ fontSize: '20px' }}>🏃</span>
-            <div>
-              {distances.map(c => (
-                <div key={c._id} style={{ marginBottom: '4px' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#14532d' }}>
-                    +{km} km ajoutés à {c.name}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '2px' }}>
-                    {c.scope === 'individuel'
-                      ? `${fmtKm((km / (c.goalKm || 1)) * 100)}% de ton objectif de ${fmtKm(c.goalKm)} km`
-                      : `Contribution de ${((km / (c.goalKm || 1)) * 100).toLocaleString('fr-CA', { maximumSignificantDigits: 2 })}% à l'objectif collectif`}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading || matching.length === 0}
-          style={{
-            width: '100%', padding: '14px',
-            background: loading || matching.length === 0 ? '#f0a050' : '#e67e22',
-            color: '#fff', border: 'none', borderRadius: '10px',
-            fontSize: '13px', fontWeight: 700,
-            letterSpacing: '0.1em', textTransform: 'uppercase',
-            cursor: loading || matching.length === 0 ? 'not-allowed' : 'pointer',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => { if (!loading && matching.length) e.target.style.background = '#d4711e' }}
-          onMouseLeave={e => { if (!loading && matching.length) e.target.style.background = '#e67e22' }}
-        >
-          {loading ? 'Soumission...' : isStreak ? 'VALIDER MA JOURNÉE 🔥' : 'SOUMETTRE MA COURSE →'}
-        </button>
+        <input id="run-date" type="date" value={form.date} min={minDate} max={maxDate}
+          onChange={e => setForm({ ...form, date: e.target.value })}
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '16px 0', fontSize: '15px', color: C.text, fontFamily: 'inherit' }} />
       </div>
-    </div>
+
+      <Label htmlFor="run-note" hint="Facultatif">Un mot sur votre sortie</Label>
+      <textarea id="run-note" rows={3} maxLength={500}
+        placeholder={isStreak ? 'Ex : 10 pages lues, chapitre 3 terminé…' : 'Une boucle au bord du fleuve, de bonnes sensations…'}
+        value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
+        style={{
+          width: '100%', background: C.card, border: `1px solid ${C.line}`, borderRadius: '14px', padding: '14px',
+          fontSize: '15px', color: C.text, fontFamily: 'inherit', resize: 'none', outline: 'none', lineHeight: 1.5, marginBottom: '1.25rem',
+        }} />
+
+      {/* Où comptera la sortie */}
+      {matching.length === 0 ? (
+        <Notice icon="event_busy" style={{ marginBottom: '1.25rem', background: '#fee2e2' }}>
+          Aucun défi actif ne couvre cette date. Périodes ouvertes : {actives.map(c =>
+            `${c.name} (${formatDay(c.startDate, { day: 'numeric', month: 'short' })} → ${formatDay(c.endDate, { day: 'numeric', month: 'short' })})`).join(', ')}.
+        </Notice>
+      ) : (
+        <Notice icon={isStreak ? 'local_fire_department' : 'flag'} style={{ marginBottom: '1.25rem' }}>
+          {distances.length > 0 && <>Vos {km > 0 ? `${fmtKm(km)} km` : 'kilomètres'} rejoindront le défi {quote(distances)}.</>}
+          {distances.length > 0 && hasStreak && <br />}
+          {hasStreak && <>Cette sortie valide votre journée pour {quote(matching.filter(c => c.type === 'streak'))}.</>}
+        </Notice>
+      )}
+
+      <PrimaryButton type="submit" disabled={loading || matching.length === 0}>
+        <Icon name="add" size={22} />
+        {loading ? 'Enregistrement...' : isStreak ? 'Valider ma journée' : 'Enregistrer ma sortie'}
+      </PrimaryButton>
+    </form>
   )
 }

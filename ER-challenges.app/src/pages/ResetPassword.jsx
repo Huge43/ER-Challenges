@@ -4,11 +4,11 @@ import api from '../api'
 
 const inputStyle = {
   width: '100%', padding: '13px 14px', border: '1px solid #e2e8f0', borderRadius: '10px',
-  fontSize: '14px', color: '#1e2a4a', background: '#f8fafc', outline: 'none', marginBottom: '1rem',
+  fontSize: '14px', color: '#16223f', background: '#f8fafc', outline: 'none', marginBottom: '1rem',
 }
 const labelStyle = {
   display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em',
-  textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '8px',
+  textTransform: 'uppercase', color: '#16223f', marginBottom: '8px',
 }
 
 export default function ResetPassword() {
@@ -42,7 +42,7 @@ export default function ResetPassword() {
         width: '100%', maxWidth: '420px', background: '#fff', borderRadius: '20px',
         padding: '2.5rem 2rem', boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
       }}>
-        <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', marginBottom: '8px' }}>
+        <h1 style={{ fontFamily: 'Poppins, serif', fontSize: '28px', fontWeight: 600, color: '#16223f', marginBottom: '8px' }}>
           Nouveau mot de passe
         </h1>
         <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '1.75rem' }}>
@@ -70,7 +70,7 @@ export default function ResetPassword() {
               value={confirm} onChange={e => setConfirm(e.target.value)} style={inputStyle} />
 
             <button type="submit" disabled={loading} style={{
-              width: '100%', padding: '14px', marginTop: '0.5rem', background: loading ? '#f0a050' : '#e67e22',
+              width: '100%', padding: '14px', marginTop: '0.5rem', background: loading ? '#f0a050' : '#e8822a',
               color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer',
             }}>
@@ -80,7 +80,7 @@ export default function ResetPassword() {
         )}
 
         <p style={{ textAlign: 'center', fontSize: '14px', color: '#64748b', marginTop: '1.5rem' }}>
-          <Link to="/login" style={{ color: '#e67e22', fontWeight: 600, textDecoration: 'none' }}>Retour à la connexion</Link>
+          <Link to="/login" style={{ color: '#e8822a', fontWeight: 600, textDecoration: 'none' }}>Retour à la connexion</Link>
         </p>
       </form>
     </div>

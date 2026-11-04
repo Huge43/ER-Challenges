@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
+import { PageTitle } from '../components/ui'
 import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
 
@@ -89,12 +90,7 @@ export default function Progression() {
 
       {/* Header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-          Progression
-        </h1>
-        <p style={{ fontSize: '14px', color: '#64748b' }}>
-          {isKm ? 'Suivez l\'avancée de la communauté en kilomètres.' : 'Suivez les streaks de la communauté — la régularité avant tout.'}
-        </p>
+        <PageTitle eyebrow="Progression" title="Chaque petit pas compte." subtitle={isKm ? 'Suivez l\'avancée de la communauté en kilomètres.' : 'Suivez les streaks de la communauté — la régularité avant tout.'} style={{ marginBottom: 0 }} />
       </div>
 
       {/* Onglets */}
@@ -109,7 +105,7 @@ export default function Progression() {
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '10px 24px', borderRadius: '9px', border: 'none',
             background: tab === t.key ? '#fff' : 'transparent',
-            color: tab === t.key ? '#1e2a4a' : '#64748b',
+            color: tab === t.key ? '#16223f' : '#64748b',
             fontSize: '14px', fontWeight: tab === t.key ? 700 : 500,
             cursor: 'pointer',
             boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
@@ -123,11 +119,11 @@ export default function Progression() {
       {/* Cartes de stats */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {(isKm ? [
-          { label: 'Mes kilomètres', value: `${fmtKm(myValue)} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
+          { label: 'Mes kilomètres', value: `${fmtKm(myValue)} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e8822a' },
           { label: 'Total communauté', value: `${fmtKm(totalKm)} km`, sub: `${members.length} Elites`, color: '#1e3a8a' },
           { label: 'Moyenne par membre', value: `${avgKm} km`, sub: 'tous membres', color: '#16a34a' },
         ] : [
-          { label: 'Mon streak actuel', value: `${myValue} jours ${myValue > 0 ? '🔥' : ''}`, sub: `Record perso : ${myRecord} jours`, color: '#e67e22' },
+          { label: 'Mon streak actuel', value: `${myValue} jours ${myValue > 0 ? '🔥' : ''}`, sub: `Record perso : ${myRecord} jours`, color: '#e8822a' },
           { label: 'Meilleur streak actif', value: `${bestStreak} jours`, sub: 'dans la communauté', color: '#1e3a8a' },
           { label: 'Moyenne des streaks', value: `${avgStreak} jours`, sub: 'tous membres', color: '#16a34a' },
         ]).map(card => (
@@ -139,7 +135,7 @@ export default function Progression() {
             <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
               {card.label}
             </p>
-            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '30px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
+            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '30px', fontWeight: 600, color: '#16223f', lineHeight: 1 }}>
               {card.value}
             </p>
             <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{card.sub}</p>
@@ -152,7 +148,7 @@ export default function Progression() {
         background: '#fff', borderRadius: '16px', border: '1px solid #e8edf5',
         padding: '1.75rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
-        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#16223f', marginBottom: '4px' }}>
           {isKm ? 'Mes paliers kilomètres' : 'Mes paliers streaks'}
         </p>
         <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '1.5rem' }}>
@@ -179,10 +175,10 @@ export default function Progression() {
                 <p style={{ fontSize: '13px', fontWeight: 700, color: reached ? (isKm ? '#14532d' : '#9a3412') : '#94a3b8' }}>
                   {palier.value} {unit}
                 </p>
-                <p style={{ fontSize: '11px', color: reached ? (isKm ? '#16a34a' : '#e67e22') : '#94a3b8', marginTop: '2px' }}>
+                <p style={{ fontSize: '11px', color: reached ? (isKm ? '#16a34a' : '#e8822a') : '#94a3b8', marginTop: '2px' }}>
                   {palier.label}
                 </p>
-                {reached && <p style={{ fontSize: '10px', color: isKm ? '#16a34a' : '#e67e22', fontWeight: 700, marginTop: '4px' }}>✓ Atteint</p>}
+                {reached && <p style={{ fontSize: '10px', color: isKm ? '#16a34a' : '#e8822a', fontWeight: 700, marginTop: '4px' }}>✓ Atteint</p>}
               </div>
             )
           })}
@@ -194,7 +190,7 @@ export default function Progression() {
         background: '#fff', borderRadius: '16px', border: '1px solid #e8edf5',
         padding: '1.75rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
-        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#16223f', marginBottom: '4px' }}>
           {isKm ? 'Progression des membres' : 'Streaks des membres'}
         </p>
         <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '1.5rem' }}>
@@ -218,21 +214,21 @@ export default function Progression() {
                   {m.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <span style={{ flex: 1 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                    {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#16223f' }}>
+                    {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e8822a', fontWeight: 700 }}>(moi)</span>}
                   </span>
                   <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '1px' }}>
                     {palierInfo.label}
                   </span>
                 </span>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: isMe ? '#e67e22' : (isKm ? '#1e3a8a' : '#e67e22') }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: isMe ? '#e8822a' : (isKm ? '#1e3a8a' : '#e8822a') }}>
                   {isKm ? fmtKm(value) : value} {unit} {!isKm && value > 0 && '🔥'}
                 </span>
               </div>
               <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '8px', overflow: 'hidden', marginLeft: '44px' }}>
                 <div style={{
                   height: '100%', width: `${barWidth}%`,
-                  background: isMe ? '#e67e22' : (isKm ? '#1e3a8a' : '#f59e0b'),
+                  background: isMe ? '#e8822a' : (isKm ? '#1e3a8a' : '#f59e0b'),
                   borderRadius: '99px', transition: 'width 0.6s ease',
                 }} />
               </div>

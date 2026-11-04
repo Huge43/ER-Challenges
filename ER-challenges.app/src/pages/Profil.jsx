@@ -1,23 +1,31 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import api from '../api'
-import useIsMobile from '../hooks/useIsMobile'
-import { formatDay, fmtKm } from '../utils/challenge'
+import { formatDay, fmtKm, today } from '../utils/challenge'
+import { Icon, Card, Avatar, PageTitle, SectionTitle, Label, Field, PrimaryButton, ErrorBox, Notice, Loading } from '../components/ui'
+import { C } from '../components/theme'
 
-const MEDALS = ['🥇', '🥈', '🥉']
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+const pill = (bg, color) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: '99px', background: bg, color, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em' })
+const capitalize = (s) => s[0].toUpperCase() + s.slice(1)
+const ordinal = (n) => n === 1 ? '1er' : `${n}e`
+const trophyIcon = (c) => c.type === 'streak' ? 'local_fire_department' : c.scope === 'collectif' ? 'workspace_premium' : 'emoji_events'
 
-// /profil : mon profil ; /profil/:id : le profil d'un autre membre (activités et trophées)
+// /profil : mon profil ; /profil/:id : le profil public d'un autre membre (chiffres, trophées, activités)
 export default function Profil() {
   const [member, setMember] = useState(null)
+  const [members, setMembers] = useState([])
+  const [streak, setStreak] = useState({ current: 0, longest: 0 })
   const [runs, setRuns] = useState([])
   const [challenges, setChallenges] = useState([])
+  const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const { id } = useParams()
   const memberId = id || currentMember.id
   const isMe = memberId === currentMember.id
   const canEdit = isMe || currentMember.role === 'admin'
-  const isMobile = useIsMobile()
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
   const [pwSuccess, setPwSuccess] = useState('')
@@ -47,10 +55,13 @@ export default function Profil() {
     api.get('/members'),
     api.get(`/runs/member/${memberId}`),
     api.get('/challenges'),
-  ]).then(([membersRes, runsRes, challengesRes]) => {
+    api.get('/members/streaks'),
+  ]).then(([membersRes, runsRes, challengesRes, streaksRes]) => {
+    setMembers(membersRes.data)
     setMember(membersRes.data.find(m => m._id === memberId))
     setRuns(runsRes.data)
     setChallenges(challengesRes.data)
+    setStreak(streaksRes.data.find(s => s._id === memberId) || { current: 0, longest: 0 })
   }).catch(err => console.error(err))
     .finally(() => setLoading(false))
 
@@ -78,23 +89,24 @@ export default function Profil() {
     }
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <p style={{ color: '#64748b', fontSize: '14px' }}>Chargement...</p>
-    </div>
-  )
+  if (loading) return <Loading />
+  if (!member) return <p style={{ color: '#991b1b', textAlign: 'center', marginTop: '3rem' }}>Profil introuvable.</p>
 
-  if (!member) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <p style={{ color: '#ef4444', fontSize: '14px' }}>Profil introuvable</p>
-    </div>
-  )
-
-  const totalActivities = runs.length
-  const totalKm = runs.reduce((sum, r) => sum + r.km, 0)
-  const runsWithKm = runs.filter(r => r.km > 0)
-  const avgKm = runsWithKm.length ? (totalKm / runsWithKm.length).toFixed(1) : 0
-  const longestRun = runs.reduce((max, r) => Math.max(max, r.km), 0)
+  // Chiffres du mois en cours, comparés au mois précédent
+  const month = today().slice(0, 7)
+  const monthName = MONTHS[Number(month.slice(5, 7)) - 1]
+  const prev = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7)
+  const inMonth = (m) => runs.filter(r => r.date.slice(0, 7) === m)
+  const monthRuns = inMonth(month)
+  const monthKm = monthRuns.reduce((s, r) => s + r.km, 0)
+  const prevKm = inMonth(prev).reduce((s, r) => s + r.km, 0)
+  const trend = prevKm > 0 ? Math.round(((monthKm - prevKm) / prevKm) * 100) : null
+  const withKm = runs.filter(r => r.km > 0)
+  const avgKm = withKm.length ? withKm.reduce((s, r) => s + r.km, 0) / withKm.length : 0
+  const monthWithKm = monthRuns.filter(r => r.km > 0)
+  const monthAvg = monthWithKm.length ? monthKm / monthWithKm.length : 0
+  const rank = [...members].sort((a, b) => b.totalKm - a.totalKm).findIndex(m => m._id === memberId) + 1
+  const since = new Date(member.createdAt)
 
   // Trophées : podiums des challenges terminés, du plus récent au plus ancien, avec le titre donné par un admin
   const trophies = challenges
@@ -105,248 +117,187 @@ export default function Profil() {
       .map(r => ({ challenge: c, rank: r.rank, value: r.value, title: c.titles?.[r.rank - 1] })))
   const latestTitle = trophies.find(t => t.title)?.title
 
-  const timeAgo = (date) => {
-    const diff = Math.floor((new Date() - new Date(date)) / 60000)
-    if (diff < 60) return `il y a ${diff} min`
-    if (diff < 1440) return `il y a ${Math.floor(diff / 60)}h`
-    return `il y a ${Math.floor(diff / 1440)}j`
-  }
+  const stats = [
+    { label: 'Distance totale', icon: 'route', value: `${fmtKm(monthKm)} km`, sub: trend === null ? `Total : ${fmtKm(member.totalKm)} km` : `${trend >= 0 ? '+' : ''}${trend} % vs ${MONTHS[Number(prev.slice(5, 7)) - 1]}` },
+    { label: 'Sorties', icon: 'footprint', value: monthRuns.length, sub: 'Ce mois-ci' },
+    { label: 'Série actuelle', icon: 'local_fire_department', value: `${streak.current} jour${streak.current > 1 ? 's' : ''}`, sub: `Record : ${streak.longest} jour${streak.longest > 1 ? 's' : ''}` },
+    { label: 'Distance moyenne', icon: 'monitoring', value: `${fmtKm(avgKm)} km`, sub: 'Par sortie' },
+  ]
+  const shownRuns = showAll ? runs : runs.slice(0, isMe ? 5 : 4)
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-
-      {/* Header profil */}
-      <div style={{
-        background: 'linear-gradient(135deg, #0f1f3d 0%, #1e3a5f 100%)',
-        borderRadius: '20px', padding: isMobile ? '1.75rem' : '2.5rem', marginBottom: '2rem',
-        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'flex-start' : 'center', gap: '1.5rem',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          width: '90px', height: '90px', borderRadius: '50%',
-          background: '#e67e22', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '32px', fontWeight: 700, color: '#fff',
-          flexShrink: 0,
+    <div>
+      {isMe ? (
+        <PageTitle title="Votre profil" subtitle="Votre rythme, vos progrès." />
+      ) : (
+        <button onClick={() => navigate(-1)} style={{
+          display: 'flex', alignItems: 'center', gap: '14px', background: 'none', border: 'none',
+          cursor: 'pointer', padding: 0, marginBottom: '1.1rem', fontFamily: 'inherit', fontSize: '14px', fontWeight: 500, color: C.text,
         }}>
-          {member.name.split(' ').map(n => n[0]).join('')}
-        </div>
-        <div>
-          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '34px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
-            {member.name}
-          </h1>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '10px' }}>
-            {member.email}
-          </p>
-          <span style={{
-            display: 'inline-block', padding: '4px 12px', borderRadius: '99px',
-            background: member.role === 'admin' ? 'rgba(230,126,34,0.2)' : 'rgba(255,255,255,0.12)',
-            color: member.role === 'admin' ? '#f59e0b' : 'rgba(255,255,255,0.8)',
-            fontSize: '12px', fontWeight: 600,
-          }}>
-            {member.role === 'admin' ? '★ Administrateur' : 'Membre'}
+          <span style={{ width: 44, height: 44, borderRadius: '14px', background: C.card, boxShadow: '0 2px 10px rgba(22,34,63,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="arrow_back" color={C.text} />
           </span>
-          {latestTitle && (
-            <span style={{
-              display: 'inline-block', padding: '4px 12px', borderRadius: '99px', marginLeft: '8px',
-              background: 'rgba(245,158,11,0.2)', color: '#fbbf24', fontSize: '12px', fontWeight: 600,
-            }}>
-              🏅 {latestTitle}
-            </span>
-          )}
-          {member.suspended && (
-            <span style={{
-              display: 'inline-block', padding: '4px 12px', borderRadius: '99px', marginLeft: '8px',
-              background: 'rgba(239,68,68,0.2)', color: '#fca5a5', fontSize: '12px', fontWeight: 600,
-            }}>
-              Compte suspendu
+          Retour
+        </button>
+      )}
+
+      {/* Carte d'identité */}
+      <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navy2} 100%)`, borderRadius: '22px', padding: '1.25rem', color: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Avatar name={member.name} size={72} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '21px', fontWeight: 700 }}>{member.name}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+              <span style={pill('rgba(255,255,255,0.14)', '#fff')}>{member.role === 'admin' ? 'ADMINISTRATEUR' : 'MEMBRE ELITE'}</span>
+              {isMe && latestTitle && <span style={pill('rgba(232,130,42,0.25)', '#ffc58f')}>🏅 {latestTitle}</span>}
+              {member.suspended && <span style={pill('rgba(239,68,68,0.25)', '#fca5a5')}>COMPTE SUSPENDU</span>}
+            </div>
+          </div>
+        </div>
+        {/* Profil public : le dernier titre obtenu tient lieu de devise */}
+        {!isMe && latestTitle && (
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', marginTop: '1rem' }}>🏅 « {latestTitle} »</p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.1rem', fontSize: '12px', color: 'rgba(255,255,255,0.75)' }}>
+          <span>Depuis {isMe ? MONTHS[since.getMonth()] : formatDay(member.createdAt, { month: 'short' })} {since.getFullYear()}</span>
+          {rank > 0 && member.totalKm > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffc58f', fontWeight: 600 }}>
+              <Icon name="trophy" size={16} color={C.orange} /> {ordinal(rank)} au classement
             </span>
           )}
         </div>
-        <div style={{
-          position: 'absolute', right: '-40px', top: '-40px',
-          width: '160px', height: '160px', borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }} />
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-        {[
-          { label: 'Km totaux', value: fmtKm(member.totalKm), color: '#1e3a8a' },
-          { label: 'Activités', value: totalActivities, color: '#e67e22' },
-          { label: 'Moyenne / activité', value: `${fmtKm(avgKm)} km`, color: '#16a34a' },
-          { label: 'Plus longue', value: `${fmtKm(longestRun)} km`, color: '#9333ea' },
-        ].map(card => (
-          <div key={card.label} style={{
-            background: '#fff', borderRadius: '14px',
-            border: '1px solid #e8edf5', padding: '1.25rem 1.5rem',
-            borderTop: `3px solid ${card.color}`,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-          }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
-              {card.label}
-            </p>
-            <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '28px', fontWeight: 600, color: '#1e2a4a', lineHeight: 1 }}>
-              {card.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Trophées */}
-      <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', padding: '1.5rem', marginBottom: '2rem',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '1rem' }}>
-          Trophées
-        </p>
-        {trophies.length === 0 ? (
-          <p style={{ fontSize: '14px', color: '#64748b' }}>Pas encore de podium. Le prochain challenge est le bon !</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
-            {trophies.map(t => (
-              <div key={t.challenge._id} style={{
-                background: t.rank === 1 ? '#fffbeb' : '#f8f9fb', borderRadius: '12px', padding: '1rem',
-                border: `1px solid ${t.rank === 1 ? '#fde68a' : '#eef1f6'}`,
-              }}>
-                <div style={{ fontSize: '26px', marginBottom: '6px' }}>{MEDALS[t.rank - 1]}</div>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{t.challenge.name}</p>
-                {t.title && <p style={{ fontSize: '13px', fontWeight: 700, color: '#e67e22', marginTop: '2px' }}>« {t.title} »</p>}
-                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                  {t.rank === 1 ? '1er' : `${t.rank}e`} · {t.challenge.type === 'streak' ? `${t.value} jours` : `${fmtKm(t.value)} km`}
-                </p>
+      <SectionTitle
+        title={`${capitalize(monthName)} en chiffres`}
+        action={!isMe && <span style={{ fontSize: '12px', color: C.muted }}>{month.slice(0, 4)}</span>}
+      />
+      {isMe ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {stats.map(s => (
+            <Card key={s.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: C.muted }}>{s.label}</span>
+                <Icon name={s.icon} size={20} color={C.orange} />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Historique des activités */}
-      <div style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-          <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a' }}>
-            Historique des activités
-          </p>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-            {totalActivities} activité{totalActivities > 1 ? 's' : ''} enregistrée{totalActivities > 1 ? 's' : ''}
-          </p>
-        </div>
-
-        {runs.length === 0 ? (
-          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🏃</div>
-            <p style={{ fontSize: '14px', color: '#64748b' }}>Aucune activité enregistrée pour l'instant.</p>
-          </div>
-        ) : (
-          <div>
-            {runs.map((run, i) => {
-              const isValidation = run.km === 0
-              return (
-                <div key={run._id} style={{
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                  padding: '1rem 1.5rem',
-                  borderTop: i > 0 ? '1px solid #f1f5f9' : 'none',
-                }}>
-                  <div style={{
-                    width: '42px', height: '42px', borderRadius: '10px',
-                    background: isValidation ? '#fff7ed' : '#eff6ff',
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '18px', flexShrink: 0,
-                  }}>
-                    {isValidation ? '🔥' : '🏃'}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                      {run.note || (isValidation ? 'Journée validée' : 'Activité')}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                      {run.challenges?.map(c => c.name).join(', ') || 'Challenge'} · {formatDay(run.date, { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
-                    </p>
-                  </div>
-                  <span style={{
-                    padding: '6px 14px', borderRadius: '8px',
-                    background: isValidation ? '#fff7ed' : '#dcfce7',
-                    color: isValidation ? '#e67e22' : '#14532d',
-                    fontSize: '14px', fontWeight: 700,
-                  }}>
-                    {isValidation ? '✓ Validée' : `${fmtKm(run.km)} km`}
-                  </span>
-                  {canEdit && !isValidation && (
-                    <button onClick={() => handleEditRun(run)} aria-label="Modifier la distance" title="Modifier la distance" style={{
-                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
-                    }}>✏️</button>
-                  )}
-                  {canEdit && (
-                    <button onClick={() => handleDeleteRun(run)} aria-label="Supprimer l'activité" title="Supprimer l'activité" style={{
-                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
-                    }}>🗑️</button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Changer le mot de passe : seulement sur son propre profil */}
-      {isMe && <form onSubmit={handlePassword} style={{
-        background: '#fff', borderRadius: '16px',
-        border: '1px solid #e8edf5', padding: '1.5rem', marginTop: '2rem',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '1.25rem' }}>
-          Changer le mot de passe
-        </p>
-
-        {pwError && (
-          <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#991b1b', marginBottom: '1.25rem' }}>
-            {pwError}
-          </div>
-        )}
-        {pwSuccess && (
-          <div style={{ background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#14532d', marginBottom: '1.25rem' }}>
-            {pwSuccess}
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-          {[
-            { key: 'current', label: 'Mot de passe actuel', autoComplete: 'current-password' },
-            { key: 'next', label: 'Nouveau (8 caractères min.)', autoComplete: 'new-password' },
-            { key: 'confirm', label: 'Confirmer le nouveau', autoComplete: 'new-password' },
-          ].map(field => (
-            <label key={field.key} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>
-              {field.label}
-              <input
-                type="password" required autoComplete={field.autoComplete}
-                value={pwForm[field.key]}
-                onChange={e => setPwForm({ ...pwForm, [field.key]: e.target.value })}
-                style={{
-                  display: 'block', width: '100%', marginTop: '8px', padding: '13px 14px',
-                  border: '1px solid #e2e8f0', borderRadius: '10px',
-                  fontSize: '14px', color: '#1e2a4a', background: '#f8fafc',
-                }}
-              />
-            </label>
+              <p style={{ fontSize: '26px', fontWeight: 700, color: C.text, margin: '6px 0 2px' }}>{s.value}</p>
+              <p style={{ fontSize: '11px', color: C.muted }}>{s.sub}</p>
+            </Card>
           ))}
         </div>
+      ) : (
+        <Card style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '1.1rem 0.5rem' }}>
+          {[
+            { value: fmtKm(monthKm), label: 'km parcourus' },
+            { value: monthRuns.length, label: 'sorties' },
+            { value: fmtKm(monthAvg), label: 'km / sortie' },
+          ].map((s, i) => (
+            <div key={s.label} style={{ textAlign: 'center', borderLeft: i ? `1px solid ${C.line}` : 'none' }}>
+              <p style={{ fontSize: '24px', fontWeight: 700, color: C.text }}>{s.value}</p>
+              <p style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>{s.label}</p>
+            </div>
+          ))}
+        </Card>
+      )}
 
-        <button type="submit" disabled={pwLoading} style={{
-          padding: '12px 24px', background: pwLoading ? '#f0a050' : '#e67e22',
-          color: '#fff', border: 'none', borderRadius: '10px',
-          fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-          cursor: pwLoading ? 'not-allowed' : 'pointer',
+      {(trophies.length > 0 || !isMe) && (
+        <>
+          <SectionTitle
+            title={isMe ? 'Vos trophées' : 'Ses trophées'}
+            action={<span style={{ fontSize: '12px', color: C.muted }}>{trophies.length} obtenu{trophies.length > 1 ? 's' : ''}</span>}
+          />
+          <p style={{ fontSize: '13px', color: C.muted, margin: '-0.35rem 0 0.85rem' }}>Des défis relevés, des efforts récompensés.</p>
+          {trophies.length === 0 && <p style={{ fontSize: '14px', color: C.muted }}>Pas encore de podium.</p>}
+          {trophies.map(t => (
+            <Card key={t.challenge._id} style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '10px' }}>
+              <span style={{ width: 52, height: 52, borderRadius: '14px', background: C.orangeSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name={trophyIcon(t.challenge)} size={26} color={C.orange} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: C.text }}>{t.title || t.challenge.name}</p>
+                <p style={{ fontSize: '12px', color: C.muted }}>
+                  {t.title ? `${t.challenge.name} · ` : ''}{ordinal(t.rank)} · {t.challenge.type === 'streak' ? `${t.value} jours` : `${fmtKm(t.value)} km`}
+                </p>
+                <p style={{ fontSize: '12px', fontWeight: 600, color: C.orange, marginTop: '2px' }}>
+                  Obtenu le {formatDay(t.challenge.endDate, { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+            </Card>
+          ))}
+        </>
+      )}
+
+      <SectionTitle
+        title={isMe ? 'Vos dernières sorties' : 'Ses activités'}
+        action={isMe && runs.length > 5 && (
+          <button onClick={() => setShowAll(!showAll)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: C.orange, fontFamily: 'inherit' }}>
+            {showAll ? 'Voir moins' : `Voir les ${runs.length}`}
+          </button>
+        )}
+      />
+      {runs.length === 0 ? (
+        <p style={{ fontSize: '14px', color: C.muted }}>Aucune sortie enregistrée pour l'instant.</p>
+      ) : shownRuns.map(run => {
+        const isValidation = run.km === 0
+        return (
+          <Card key={run._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+            <span style={{ width: 44, height: 44, borderRadius: '12px', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon name={isValidation ? 'local_fire_department' : 'footprint'} color={isValidation ? C.orange : C.navy} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {run.note || (isValidation ? 'Journée validée' : 'Sortie')}
+              </p>
+              <p style={{ fontSize: '11px', color: C.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {formatDay(run.date, { day: 'numeric', month: 'short', year: isMe ? undefined : 'numeric' })} · {run.challenges?.map(c => c.name).join(', ')}
+              </p>
+            </div>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>
+              {isValidation ? '✓' : `${fmtKm(run.km)} km`}
+            </span>
+            {canEdit && !isValidation && (
+              <button onClick={() => handleEditRun(run)} aria-label="Modifier la distance" title="Modifier la distance" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex' }}>
+                <Icon name="edit" size={19} color={C.muted} />
+              </button>
+            )}
+            {canEdit && (
+              <button onClick={() => handleDeleteRun(run)} aria-label="Supprimer l'activité" title="Supprimer l'activité" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex' }}>
+                <Icon name="delete" size={19} color={C.muted} />
+              </button>
+            )}
+          </Card>
+        )
+      })}
+      {/* Profil public : bouton plein en bas de liste, comme sur la maquette */}
+      {!isMe && runs.length > 4 && (
+        <button onClick={() => setShowAll(!showAll)} style={{
+          width: '100%', padding: '14px', marginTop: '4px', borderRadius: '14px', background: C.card,
+          border: `1px solid ${C.line}`, color: C.orange, fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
         }}>
-          {pwLoading ? 'Mise à jour...' : 'Mettre à jour'}
+          {showAll ? 'Voir moins' : `Voir les ${runs.length} sorties`}
         </button>
-      </form>}
+      )}
+
+      {/* Changer le mot de passe : seulement sur son propre profil */}
+      {isMe && (
+        <form onSubmit={handlePassword}>
+          <SectionTitle title="Changer le mot de passe" />
+          {pwError && <ErrorBox>{pwError}</ErrorBox>}
+          {pwSuccess && <Notice icon="check_circle" style={{ marginBottom: '1rem' }}>{pwSuccess}</Notice>}
+          {[
+            { key: 'current', label: 'Mot de passe actuel', autoComplete: 'current-password' },
+            { key: 'next', label: 'Nouveau mot de passe', autoComplete: 'new-password' },
+            { key: 'confirm', label: 'Confirmer le nouveau', autoComplete: 'new-password' },
+          ].map(f => (
+            <div key={f.key}>
+              <Label htmlFor={`pw-${f.key}`}>{f.label}</Label>
+              <Field id={`pw-${f.key}`} icon="lock" type="password" required autoComplete={f.autoComplete}
+                value={pwForm[f.key]} onChange={e => setPwForm({ ...pwForm, [f.key]: e.target.value })} />
+            </div>
+          ))}
+          <PrimaryButton type="submit" disabled={pwLoading}>{pwLoading ? 'Mise à jour...' : 'Mettre à jour'}</PrimaryButton>
+        </form>
+      )}
     </div>
   )
 }
