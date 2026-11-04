@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
+import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe','#e0e7ff','#fce7f3','#dcfce7','#fef3c7','#fee2e2','#f3e8ff','#e0f2fe','#f0fdf4','#fdf4ff']
@@ -230,7 +231,7 @@ export default function Membres() {
                       background: '#eff6ff', color: '#1e3a8a',
                       borderRadius: '6px', fontSize: '13px', fontWeight: 700,
                     }}>
-                      {m.totalKm} km
+                      {fmtKm(m.totalKm)} km
                     </span>
                   </td>
                   <td style={{ padding: '14px 1rem' }}>

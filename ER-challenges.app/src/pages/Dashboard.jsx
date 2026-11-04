@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { getDashboard } from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
-import { getStatus, getProgress as getProgressOf, stageInfo, daysLeft } from '../utils/challenge'
+import { getStatus, getProgress as getProgressOf, stageInfo, daysLeft, fmtKm } from '../utils/challenge'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -232,7 +232,7 @@ export default function Dashboard() {
               {stages?.list.length > 0 && (
                 <p style={{ fontSize: '13px', color: '#475569' }}>
                   {stages.next
-                    ? <>Prochaine étape : <strong>{stages.next.name}</strong> ({stages.next.km} km), encore {stages.remaining} km</>
+                    ? <>Prochaine étape : <strong>{stages.next.name}</strong> ({fmtKm(stages.next.km)} km), encore {fmtKm(stages.remaining)} km</>
                     : 'Toutes les étapes sont franchies 🎉'}
                 </p>
               )}

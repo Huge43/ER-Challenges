@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
-import { containsDay, formatDay, today } from '../utils/challenge'
+import { containsDay, formatDay, today, fmtKm } from '../utils/challenge'
 
 export default function SoumettreRun() {
   const [form, setForm] = useState({ km: '', note: '', date: today() })
@@ -271,8 +271,8 @@ export default function SoumettreRun() {
                   </p>
                   <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '2px' }}>
                     {c.scope === 'individuel'
-                      ? `${((km / (c.goalKm || 1)) * 100).toFixed(1)}% de ton objectif de ${c.goalKm} km`
-                      : `Contribution de ${((km / (c.goalKm || 1)) * 100).toFixed(3)}% à l'objectif collectif`}
+                      ? `${fmtKm((km / (c.goalKm || 1)) * 100)}% de ton objectif de ${fmtKm(c.goalKm)} km`
+                      : `Contribution de ${((km / (c.goalKm || 1)) * 100).toLocaleString('fr-CA', { maximumSignificantDigits: 2 })}% à l'objectif collectif`}
                   </p>
                 </div>
               ))}

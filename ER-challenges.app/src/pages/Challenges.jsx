@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
-import { getStatus, getProgress as getProgressOf, formatDay } from '../utils/challenge'
+import { getStatus, getProgress as getProgressOf, formatDay, fmtKm } from '../utils/challenge'
 
 const TYPES = {
   distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
@@ -406,7 +406,7 @@ export default function Challenges() {
                           fontSize: '13px', fontWeight: 700,
                           color: idx === 0 ? '#e67e22' : '#64748b',
                         }}>
-                          {r.value} {c.type === 'streak' ? 'jours' : 'km'}
+                          {c.type === 'streak' ? r.value : fmtKm(r.value)} {c.type === 'streak' ? 'jours' : 'km'}
                         </span>
                       </div>
                     ))}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
+import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
@@ -89,6 +90,7 @@ export default function Classement() {
   }
 
   const paliers = isKm ? PALIERS_KM : PALIERS_STREAK
+  const fmt = (v) => unit === 'km' ? fmtKm(v) : v
   const myRank = list.findIndex(m => (m._id || m.memberId) === currentMember.id) + 1
 
   return (
@@ -309,7 +311,7 @@ export default function Classement() {
                   fontSize: '22px', fontFamily: 'Poppins, sans-serif', fontWeight: 700,
                   color: i === 0 ? '#e67e22' : (unit === 'km' ? '#1e3a8a' : '#e67e22'),
                 }}>
-                  {getValue(m)} {unit} {unit === 'jours' && getValue(m) > 0 && '🔥'}
+                  {fmt(getValue(m))} {unit} {unit === 'jours' && getValue(m) > 0 && '🔥'}
                 </p>
               </div>
             ))}
@@ -402,7 +404,7 @@ export default function Classement() {
                             color: isMe ? '#92400e' : (unit === 'km' ? '#1e3a8a' : '#e67e22'),
                             borderRadius: '6px', fontSize: '13px', fontWeight: 700,
                           }}>
-                            {value} {unit} {unit === 'jours' && value > 0 && '🔥'}
+                            {fmt(value)} {unit} {unit === 'jours' && value > 0 && '🔥'}
                           </span>
                         </td>
                       </tr>

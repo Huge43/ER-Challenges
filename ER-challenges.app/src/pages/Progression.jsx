@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
+import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#fee2e2', '#f3e8ff', '#e0f2fe', '#f0fdf4', '#fdf4ff']
@@ -27,7 +28,7 @@ const getPalierProgress = (value, paliers) => {
   const prev = [...paliers].reverse().find(p => p.value <= value)
   const base = prev ? prev.value : 0
   const pct = Math.round(((value - base) / (next.value - base)) * 100)
-  return { pct, label: `${next.value - value} avant "${next.label}" ${next.icon}` }
+  return { pct, label: `${fmtKm(next.value - value)} avant "${next.label}" ${next.icon}` }
 }
 
 export default function Progression() {
@@ -122,8 +123,8 @@ export default function Progression() {
       {/* Cartes de stats */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {(isKm ? [
-          { label: 'Mes kilomètres', value: `${myValue} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
-          { label: 'Total communauté', value: `${totalKm} km`, sub: `${members.length} Elites`, color: '#1e3a8a' },
+          { label: 'Mes kilomètres', value: `${fmtKm(myValue)} km`, sub: lastPalier ? `Palier : ${lastPalier.label}` : 'Continue !', color: '#e67e22' },
+          { label: 'Total communauté', value: `${fmtKm(totalKm)} km`, sub: `${members.length} Elites`, color: '#1e3a8a' },
           { label: 'Moyenne par membre', value: `${avgKm} km`, sub: 'tous membres', color: '#16a34a' },
         ] : [
           { label: 'Mon streak actuel', value: `${myValue} jours ${myValue > 0 ? '🔥' : ''}`, sub: `Record perso : ${myRecord} jours`, color: '#e67e22' },
@@ -156,7 +157,7 @@ export default function Progression() {
         </p>
         <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '1.5rem' }}>
           {nextPalier
-            ? `Plus que ${nextPalier.value - myValue} ${unit} pour atteindre "${nextPalier.label}" ${nextPalier.icon}`
+            ? `Plus que ${fmtKm(nextPalier.value - myValue)} ${unit} pour atteindre "${nextPalier.label}" ${nextPalier.icon}`
             : `Tu as franchi tous les paliers ! 👑`}
         </p>
 
@@ -225,7 +226,7 @@ export default function Progression() {
                   </span>
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: 700, color: isMe ? '#e67e22' : (isKm ? '#1e3a8a' : '#e67e22') }}>
-                  {value} {unit} {!isKm && value > 0 && '🔥'}
+                  {isKm ? fmtKm(value) : value} {unit} {!isKm && value > 0 && '🔥'}
                 </span>
               </div>
               <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '8px', overflow: 'hidden', marginLeft: '44px' }}>

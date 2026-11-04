@@ -18,6 +18,9 @@ export const stageInfo = (stages = [], value = 0) => {
   return { list, next, remaining: next ? Math.round((next.km - value) * 10) / 10 : 0 }
 }
 
+// Km arrondis au dixième, à la française : 143,1 — 40 075
+export const fmtKm = (n) => (Math.round((Number(n) || 0) * 10) / 10).toLocaleString('fr-CA')
+
 // Affiche une date sans heure telle qu'elle a été saisie, quel que soit le fuseau du navigateur
 export const formatDay = (d, options) => new Date(d).toLocaleDateString('fr-CA', { ...options, timeZone: 'UTC' })
 
@@ -28,7 +31,12 @@ export const getStatus = (c) => {
   return { label: 'En pause', color: '#fef3c7', text: '#92400e' }
 }
 
-const percent = (value, goal) => goal ? Math.min(100, ((value / goal) * 100).toFixed(1)) : 0
+// Pourcentage entier, avec une décimale sous 1 % pour qu'un début de progression ne s'affiche pas 0
+const percent = (value, goal) => {
+  if (!goal) return 0
+  const p = Math.min(100, (value / goal) * 100)
+  return p < 1 ? Math.round(p * 10) / 10 : Math.round(p)
+}
 
 // En individuel : la progression du membre connecté, sinon celle du meilleur
 export const getProgress = (c, streaks, memberId) => {
@@ -52,10 +60,10 @@ export const getProgress = (c, streaks, memberId) => {
     const who = mine ? 'mes km' : `meilleur : ${shown.name || '—'}`
     const finishers = c.memberKm?.filter(m => m.km >= c.goalKm).length || 0
     const pct = percent(shown.km, c.goalKm)
-    return { pct, value: shown.km, label: `${shown.km} / ${c.goalKm} km (${who}) · ${finishers} à l'objectif`, big: `${pct}%` }
+    return { pct, value: shown.km, label: `${fmtKm(shown.km)} / ${fmtKm(c.goalKm)} km (${who}) · ${finishers} à l'objectif`, big: `${pct}%` }
   }
 
-  const km = Math.round((c.currentKm || 0) * 10) / 10
+  const km = c.currentKm || 0
   const pct = percent(km, c.goalKm)
-  return { pct, value: km, label: `${km.toLocaleString()} / ${c.goalKm?.toLocaleString()} km`, big: `${pct}%` }
+  return { pct, value: km, label: `${fmtKm(km)} / ${fmtKm(c.goalKm)} km`, big: `${pct}%` }
 }
