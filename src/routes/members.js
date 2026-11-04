@@ -102,7 +102,7 @@ router.get('/streaks', async (req, res) => {
         totalKm: m.totalKm,
         ...streak,
       }
-    }).sort((a, b) => b.current - a.current || b.longest - a.longest)
+    }).sort((a, b) => b.longest - a.longest || b.current - a.current)
 
     res.json(results)
   } catch (err) {

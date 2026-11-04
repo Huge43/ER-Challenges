@@ -81,7 +81,8 @@ export default function Classement() {
   if (isGlobal) {
     list = isKm ? members : streaks
     unit = isKm ? 'km' : 'jours'
-    getValue = (m) => isKm ? m.totalKm : m.current
+    // Streaks global : le plus long streak de chacun (le streak en cours retombe à 0 dès qu'un jour manque)
+    getValue = (m) => isKm ? m.totalKm : m.longest
   } else {
     const isStreakChallenge = challengeRanking?.challenge?.type === 'streak'
     list = challengeRanking?.ranking || []
@@ -345,7 +346,7 @@ export default function Classement() {
                       <th style={{ padding: '12px 1rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Progression</th>
                     )}
                     <th style={{ padding: '12px 1.5rem', textAlign: 'right', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>
-                      {unit === 'km' ? 'Total km' : 'Streak'}
+                      {unit === 'km' ? 'Total km' : isGlobal ? 'Meilleur streak' : 'Streak'}
                     </th>
                   </tr>
                 </thead>
