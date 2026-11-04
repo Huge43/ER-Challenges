@@ -4,10 +4,11 @@ import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
 import Member from '../models/Member.js'
 import { calcStreak, isChallengeOver } from '../streak.js'
+import { syncChallengeRuns } from '../challengeRuns.js'
 
 // Calcule et fige le classement final d'un challenge terminé
 const freezeResults = async (challenge) => {
-  const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name')
+  const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name')
 
   let ranking = []
 
@@ -54,8 +55,10 @@ const withMemberKm = async (challenges) => {
   const ids = list.filter(c => c.type === 'distance' && c.scope === 'individuel').map(c => c._id)
   if (!ids.length) return list
   const rows = await Run.aggregate([
-    { $match: { challenge: { $in: ids } } },
-    { $group: { _id: { challenge: '$challenge', member: '$member' }, km: { $sum: '$km' } } },
+    { $match: { challenges: { $in: ids } } },
+    { $unwind: '$challenges' },
+    { $match: { challenges: { $in: ids } } },
+    { $group: { _id: { challenge: '$challenges', member: '$member' }, km: { $sum: '$km' } } },
     { $sort: { km: -1 } },
     { $lookup: { from: 'members', localField: '_id.member', foreignField: '_id', as: 'member' } },
   ])
@@ -73,6 +76,24 @@ const router = express.Router()
 // Champs qu'un admin peut définir (results, resultsFrozen et currentKm sont calculés par le serveur)
 const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'active']
 const pick = (body) => Object.fromEntries(FIELDS.filter(f => body?.[f] !== undefined).map(f => [f, body[f]]))
+
+// Étapes d'un challenge distance : nom + km entre 0 et l'objectif, triées par km.
+// Renvoie { error } ou { stages } (stages absent si non fourni)
+const cleanStages = (stages, goalKm) => {
+  if (stages === undefined) return {}
+  if (!Array.isArray(stages) || stages.length > 50) return { error: 'Étapes invalides.' }
+  const clean = []
+  for (const s of stages) {
+    const name = typeof s?.name === 'string' ? s.name.trim() : ''
+    const km = Number(s?.km)
+    if (!name || name.length > 100) return { error: 'Chaque étape doit avoir un nom.' }
+    if (!Number.isFinite(km) || km <= 0 || (goalKm > 0 && km > goalKm)) {
+      return { error: `L'étape « ${name} » doit être placée entre 0 et ${goalKm} km.` }
+    }
+    clean.push({ name, km })
+  }
+  return { stages: clean.sort((a, b) => a.km - b.km) }
+}
 
 // GET tous les challenges
 router.get('/', async (req, res) => {
@@ -93,12 +114,12 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET challenge actif
+// GET challenges actifs (plusieurs peuvent tourner en parallèle), du plus ancien au plus récent
 router.get('/active', async (req, res) => {
   try {
-    const challenge = await Challenge.findOne({ active: true })
-      .populate('participants', '-password')
-    res.json(challenge && (await withMemberKm([challenge]))[0])
+    const active = (await Challenge.find({ active: true }).sort({ startDate: 1 }))
+      .filter(c => !isChallengeOver(c))
+    res.json(await withMemberKm(active))
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Erreur serveur.' })
@@ -121,8 +142,14 @@ router.get('/:id', async (req, res) => {
 // POST créer un challenge (admin)
 router.post('/', isAdmin, async (req, res) => {
   try {
-    const challenge = new Challenge(pick(req.body))
+    const fields = pick(req.body)
+    const { error, stages } = cleanStages(fields.stages, Number(fields.goalKm))
+    if (error) return res.status(400).json({ message: error })
+    if (stages) fields.stages = stages
+
+    const challenge = new Challenge(fields)
     await challenge.save()
+    await syncChallengeRuns(challenge)
     res.status(201).json(challenge)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -133,22 +160,32 @@ router.post('/', isAdmin, async (req, res) => {
 router.put('/:id', isAdmin, async (req, res) => {
   try {
     // Le type ne change pas après création (les runs déjà saisis n'auraient plus de sens),
-    // et l'activation passe par /activate pour garder un seul challenge actif
+    // et l'activation passe par /activate et /pause
     const { type, active, ...updates } = pick(req.body)
+    const existing = await Challenge.findById(req.params.id)
+    if (!existing) return res.status(404).json({ message: 'Challenge introuvable.' })
+
+    const { error, stages } = cleanStages(updates.stages, Number(updates.goalKm ?? existing.goalKm))
+    if (error) return res.status(400).json({ message: error })
+    if (stages) updates.stages = stages
+
     const challenge = await Challenge.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
-    if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
-    res.json(challenge)
+    // Période modifiée : rattacher/détacher les runs concernés
+    await syncChallengeRuns(challenge)
+    res.json(await Challenge.findById(challenge._id))
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
 })
 
-// PUT activer un challenge (désactive les autres) (admin)
+// PUT activer un challenge (admin) ; les autres challenges actifs le restent
 router.put('/:id/activate', isAdmin, async (req, res) => {
   try {
-    await Challenge.updateMany({}, { active: false })
     const challenge = await Challenge.findByIdAndUpdate(req.params.id, { active: true }, { new: true })
-    res.json(challenge)
+    if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
+    // Les runs déjà saisis dans sa période comptent aussi
+    await syncChallengeRuns(challenge)
+    res.json(await Challenge.findById(challenge._id))
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -159,13 +196,16 @@ router.delete('/:id', isAdmin, async (req, res) => {
   try {
     const challenge = await Challenge.findByIdAndDelete(req.params.id)
     if (challenge) {
-      // Retirer ses runs, et leurs km du total de chaque membre
+      // Runs propres à ce challenge : supprimés, et leurs km retirés du total de chaque membre
+      const onlyThis = { challenges: [challenge._id] }
       const perMember = await Run.aggregate([
-        { $match: { challenge: challenge._id } },
+        { $match: onlyThis },
         { $group: { _id: '$member', km: { $sum: '$km' } } },
       ])
       await Promise.all(perMember.map(m => Member.findByIdAndUpdate(m._id, { $inc: { totalKm: -m.km } })))
-      await Run.deleteMany({ challenge: challenge._id })
+      await Run.deleteMany(onlyThis)
+      // Runs partagés avec d'autres challenges : ils y restent comptés
+      await Run.updateMany({ challenges: challenge._id }, { $pull: { challenges: challenge._id } })
     }
     res.json({ message: 'Challenge supprimé.' })
   } catch (err) {
@@ -182,12 +222,12 @@ router.get('/:id/streak', async (req, res) => {
 
     if (challenge.scope === 'collectif') {
       // Streak collectif : un jour "compte" si AU MOINS un membre a couru ce jour-là
-      const runs = await Run.find({ challenge: challenge._id })
+      const runs = await Run.find({ challenges: challenge._id })
       const streak = calcStreak(runs.map(r => r.date))
       return res.json({ scope: 'collectif', ...streak, goalDays: challenge.goalDays })
     } else {
       // Streak individuel : on calcule pour chaque membre et on renvoie le classement
-      const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name')
+      const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name')
       const byMember = {}
       runs.forEach(run => {
         const id = run.member?._id?.toString()
@@ -246,7 +286,7 @@ router.get('/:id/ranking', async (req, res) => {
     const challenge = await Challenge.findById(req.params.id)
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
 
-    const runs = await Run.find({ challenge: challenge._id }).populate('member', 'name email')
+    const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name email')
 
     let ranking = []
 

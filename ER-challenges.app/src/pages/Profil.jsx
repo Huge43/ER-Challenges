@@ -202,7 +202,7 @@ export default function Profil() {
                       {run.note || (isValidation ? 'Journée validée' : 'Activité')}
                     </p>
                     <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                      {run.challenge?.name || 'Challenge'} · {formatDay(run.date, { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
+                      {run.challenges?.map(c => c.name).join(', ') || 'Challenge'} · {formatDay(run.date, { day: 'numeric', month: 'long', year: 'numeric' })} · {timeAgo(run.date)}
                     </p>
                   </div>
                   <span style={{

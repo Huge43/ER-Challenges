@@ -6,6 +6,7 @@ import Run from '../models/Run.js'
 import Challenge from '../models/Challenge.js'
 import { isAdmin } from '../middleware/auth.js'
 import { calcStreak } from '../streak.js'
+import { recomputeChallenges } from '../challengeRuns.js'
 
 const router = express.Router()
 
@@ -73,14 +74,10 @@ router.delete('/:id', isAdmin, async (req, res) => {
     if (req.params.id === req.member.id) return res.status(400).json({ message: 'Vous ne pouvez pas supprimer votre propre compte.' })
     const member = await Member.findByIdAndDelete(req.params.id)
     if (member) {
-      // Retirer ses runs, et leurs km du total de chaque challenge
-      const perChallenge = await Run.aggregate([
-        { $match: { member: member._id } },
-        { $group: { _id: '$challenge', km: { $sum: '$km' } } },
-      ])
-      await Promise.all(perChallenge.map(c => Challenge.findByIdAndUpdate(c._id, { $inc: { currentKm: -c.km } })))
+      // Retirer ses runs, puis recalculer les challenges où il avait couru
+      const challengeIds = await Run.distinct('challenges', { member: member._id })
       await Run.deleteMany({ member: member._id })
-      await Challenge.updateMany({ participants: member._id }, { $pull: { participants: member._id } })
+      await recomputeChallenges(challengeIds)
     }
     res.json({ message: 'Membre supprimé.' })
   } catch (err) {
