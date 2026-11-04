@@ -207,3 +207,21 @@ test('suspension de compte', async () => {
   assert.equal((await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).status, 200)
 })
 
+test('titres du podium', async () => {
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const actives = (await call('GET', '/challenges/active', admin)).data
+  const third = (await call('GET', '/challenges', admin)).data.find(c => c.name === 'Troisième')
+  // Titres : modifiables après la fin du challenge, le reste est figé
+  const tour = actives.find(c => c.name === 'Tour du monde')
+  await call('PUT', `/challenges/${tour._id}/end`, admin)
+  const titled = await call('PUT', `/challenges/${tour._id}`, admin, { titles: ['Globe-trotteur', 'Explorateur', ''] })
+  assert.equal(titled.status, 200)
+  assert.deepEqual(titled.data.titles, ['Globe-trotteur', 'Explorateur', ''])
+  assert.equal((await call('PUT', `/challenges/${tour._id}`, admin, { name: 'Autre nom' })).status, 400)
+  const frozen = (await call('GET', '/challenges', admin)).data.find(c => c._id === tour._id)
+  assert.equal(frozen.results[0].name, 'Bob')
+
+  // Le Tour terminé libère une place
+  assert.equal((await call('PUT', `/challenges/${third._id}/activate`, admin)).status, 200)
+
+})

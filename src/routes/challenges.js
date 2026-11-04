@@ -75,7 +75,7 @@ const withMemberKm = async (challenges) => {
 const router = express.Router()
 
 // Champs qu'un admin peut définir (results, resultsFrozen et currentKm sont calculés par le serveur)
-const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'active']
+const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'titles', 'active']
 const pick = (body) => Object.fromEntries(FIELDS.filter(f => body?.[f] !== undefined).map(f => [f, body[f]]))
 
 // Nombre maximum de challenges actifs en même temps
@@ -164,6 +164,9 @@ router.post('/', isAdmin, async (req, res) => {
     const { error, stages } = cleanStages(fields.stages, Number(fields.goalKm))
     if (error) return res.status(400).json({ message: error })
     if (stages) fields.stages = stages
+    const t = cleanTitles(fields.titles)
+    if (t.error) return res.status(400).json({ message: t.error })
+    if (t.titles) fields.titles = t.titles
     if (fields.active && await tooManyActive()) return res.status(400).json({ message: TOO_MANY })
 
     const challenge = new Challenge(fields)
@@ -183,6 +186,15 @@ router.put('/:id', isAdmin, async (req, res) => {
     const { type, active, ...updates } = pick(req.body)
     const existing = await Challenge.findById(req.params.id)
     if (!existing) return res.status(404).json({ message: 'Challenge introuvable.' })
+
+    const t = cleanTitles(updates.titles)
+    if (t.error) return res.status(400).json({ message: t.error })
+    // Challenge terminé : seuls les titres du podium se modifient encore, le reste est figé
+    if (isChallengeOver(existing)) {
+      if (!t.titles) return res.status(400).json({ message: 'Ce challenge est terminé : seuls ses titres sont modifiables.' })
+      return res.json(await Challenge.findByIdAndUpdate(req.params.id, { titles: t.titles }, { new: true }))
+    }
+    if (t.titles) updates.titles = t.titles
 
     const { error, stages } = cleanStages(updates.stages, Number(updates.goalKm ?? existing.goalKm))
     if (error) return res.status(400).json({ message: error })

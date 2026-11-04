@@ -23,8 +23,10 @@ const emptyForm = () => ({
   name: '', description: '', type: 'distance', icon: '🏃',
   goalKm: '', goalDays: '', scope: 'collectif',
   startDate: new Date().toLocaleDateString('en-CA'),
-  endDate: '', active: false, stages: [],
+  endDate: '', active: false, stages: [], titles: ['', '', ''],
 })
+
+const RANKS = ['1er', '2e', '3e']
 
 // Lignes d'étapes du formulaire → étapes envoyées à l'API (lignes vides ignorées)
 const stagesPayload = (rows) => rows
@@ -42,6 +44,8 @@ export default function Challenges() {
   const [tab, setTab] = useState('actifs')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  // Challenge terminé : seule la saisie des titres du podium est proposée
+  const [titlesOnly, setTitlesOnly] = useState(false)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
@@ -73,11 +77,14 @@ export default function Challenges() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
+    setTitlesOnly(false)
     setError('')
   }
 
-  const handleEdit = (c) => {
+  const handleEdit = (c, onlyTitles = false) => {
+    setTitlesOnly(onlyTitles)
     setForm({
+      titles: [0, 1, 2].map(i => c.titles?.[i] || ''),
       name: c.name,
       description: c.description || '',
       type: c.type,
@@ -98,6 +105,18 @@ export default function Challenges() {
 
   const handleCreate = async () => {
     setError('')
+    if (titlesOnly) {
+      try {
+        await api.put(`/challenges/${editingId}`, { titles: form.titles })
+        setSuccess('Titres enregistrés !')
+        closeModal()
+        fetchChallenges()
+        setTimeout(() => setSuccess(''), 3000)
+      } catch (err) {
+        setError(err.response?.data?.message || 'Erreur.')
+      }
+      return
+    }
     if (!form.name || !form.endDate) {
       setError('Nom et date de fin sont requis.')
       return
@@ -120,6 +139,7 @@ export default function Challenges() {
         endDate: form.endDate,
         active: form.active,
         scope: form.scope,
+        titles: form.titles,
       }
       if (form.type === 'distance') {
         payload.goalKm = Number(form.goalKm)
@@ -153,6 +173,7 @@ export default function Challenges() {
     goalKm: c.goalKm ? String(c.goalKm) : '',
     goalDays: c.goalDays ? String(c.goalDays) : '',
     stages: stagesForm(c.stages),
+    titles: [0, 1, 2].map(i => c.titles?.[i] || ''),
     scope: c.scope || 'collectif',
     startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '',
@@ -401,6 +422,9 @@ export default function Challenges() {
                         </span>
                         <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#1e2a4a' }}>
                           {r.name}
+                          {idx < 3 && c.titles?.[idx] && (
+                            <span style={{ marginLeft: '6px', fontSize: '11px', fontWeight: 700, color: '#e67e22' }}>« {c.titles[idx]} »</span>
+                          )}
                         </span>
                         <span style={{
                           fontSize: '13px', fontWeight: 700,
@@ -427,6 +451,12 @@ export default function Challenges() {
                           border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                         }}>
                           Relancer
+                        </button>
+                        <button onClick={() => handleEdit(c, true)} style={{
+                          padding: '8px 14px', background: '#fffbeb', color: '#92400e',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Titres
                         </button>
                         <button onClick={() => handleDelete(c._id, c.name)} style={{
                           padding: '8px 14px', background: '#fee2e2', color: '#991b1b',
@@ -493,7 +523,7 @@ export default function Challenges() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
-                {editingId ? 'Modifier le challenge' : 'Créer un challenge'}
+                {titlesOnly ? 'Titres du podium' : editingId ? 'Modifier le challenge' : 'Créer un challenge'}
               </h2>
               <button onClick={closeModal} aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
@@ -504,6 +534,7 @@ export default function Challenges() {
               </div>
             )}
 
+            {!titlesOnly && (<>
             <div style={{ marginBottom: '1rem' }}>
               <label style={labelStyle}>Nom du challenge</label>
               <input type="text" placeholder="Ex: Marathon de Mai" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
@@ -599,12 +630,28 @@ export default function Challenges() {
               </div>
             )}
 
+            </>)}
+
+            {/* Titres donnés au podium à la fin du challenge */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={labelStyle}>Titres du podium <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel)</span></label>
+              {RANKS.map((rank, i) => (
+                <div key={rank} style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b' }}>{rank}</span>
+                  <input type="text" maxLength={60} placeholder={['Ex: Roi du bitume', 'Ex: Dauphin', 'Ex: Médaille de bronze'][i]}
+                    aria-label={`Titre du ${rank}`} value={form.titles[i]}
+                    onChange={e => setForm({ ...form, titles: form.titles.map((t, j) => j === i ? e.target.value : t) })}
+                    style={inputStyle} />
+                </div>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={closeModal} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Annuler
               </button>
               <button onClick={handleCreate} style={{ flex: 1, padding: '11px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                {editingId ? 'Enregistrer →' : 'Créer le challenge →'}
+                {titlesOnly || editingId ? 'Enregistrer →' : 'Créer le challenge →'}
               </button>
             </div>
           </div>

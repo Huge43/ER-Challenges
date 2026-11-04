@@ -29,6 +29,8 @@ results: [{
     rank: { type: Number },
   }],
   resultsFrozen: { type: Boolean, default: false },
+  // Titres donnés au podium : titles[0] pour le 1er, titles[1] pour le 2e, titles[2] pour le 3e
+  titles: { type: [String], default: [] },
 
   active: { type: Boolean, default: true },
 }, { timestamps: true })
