@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../api'
 import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
@@ -207,7 +208,9 @@ export default function Membres() {
                       </div>
                       <div>
                         <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                          {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                          <Link to={`/profil/${m._id}`} style={{ color: '#1e2a4a', textDecoration: 'none' }}>{m.name}</Link>{' '}
+                          {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                          {m.suspended && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '99px', background: '#fee2e2', color: '#991b1b', fontSize: '11px', fontWeight: 700 }}>Suspendu</span>}
                         </p>
                         <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>
                       </div>

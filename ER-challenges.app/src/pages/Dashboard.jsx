@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import api from '../api'
 import { getDashboard } from '../api/index.js'
 import useIsMobile from '../hooks/useIsMobile'
@@ -256,7 +256,7 @@ export default function Dashboard() {
                   <div key={m.memberId} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
                     {avatar(m.name, i)}
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}><Link to={`/profil/${m.memberId || m._id}`} style={{ color: '#1e2a4a', textDecoration: 'none' }}>{m.name}</Link></p>
                       <p style={{ fontSize: '12px', color: '#e67e22', fontWeight: 600 }}>{m.current} jours 🔥</p>
                     </div>
                   </div>
@@ -268,8 +268,8 @@ export default function Dashboard() {
                   <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
                     {avatar(m.name, i)}
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{m.name}</p>
-                      <p style={{ fontSize: '12px', color: '#64748b' }}>{m.km} km</p>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}><Link to={`/profil/${m.memberId || m._id}`} style={{ color: '#1e2a4a', textDecoration: 'none' }}>{m.name}</Link></p>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>{fmtKm(m.km)} km</p>
                     </div>
                   </div>
                 ))

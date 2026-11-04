@@ -51,6 +51,7 @@ export default function App() {
                 <Route path="/soumettre" element={<SoumettreRun />} />
                 <Route path="/membres" element={<Membres />} />
                 <Route path="/profil" element={<Profil />} />
+                <Route path="/profil/:id" element={<Profil />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </Layout>

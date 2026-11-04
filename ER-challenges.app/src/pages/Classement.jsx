@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../api'
 import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
@@ -92,6 +93,14 @@ export default function Classement() {
 
   const paliers = isKm ? PALIERS_KM : PALIERS_STREAK
   const fmt = (v) => unit === 'km' ? fmtKm(v) : v
+  // Le nom mène au profil du membre (activités et trophées)
+  const profileLink = (m, color) => (
+    <Link to={`/profil/${m._id || m.memberId}`} style={{ color, textDecoration: 'none' }}
+      onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+      onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}>
+      {m.name}
+    </Link>
+  )
   const myRank = list.findIndex(m => (m._id || m.memberId) === currentMember.id) + 1
 
   return (
@@ -306,7 +315,7 @@ export default function Classement() {
                   {m.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <p style={{ fontSize: '15px', fontWeight: 600, color: i === 0 ? '#fff' : '#1e2a4a', marginBottom: '4px' }}>
-                  {m.name}
+                  {profileLink(m, i === 0 ? '#fff' : '#1e2a4a')}
                 </p>
                 <p style={{
                   fontSize: '22px', fontFamily: 'Poppins, sans-serif', fontWeight: 700,
@@ -381,7 +390,7 @@ export default function Classement() {
                             </div>
                             <div>
                               <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                                {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                                {profileLink(m, '#1e2a4a')} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
                               </p>
                               {m.email && <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>}
                             </div>

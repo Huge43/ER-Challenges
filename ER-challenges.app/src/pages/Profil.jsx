@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import api from '../api'
 import useIsMobile from '../hooks/useIsMobile'
-import { formatDay } from '../utils/challenge'
+import { formatDay, fmtKm } from '../utils/challenge'
 
+const MEDALS = ['🥇', '🥈', '🥉']
+
+// /profil : mon profil ; /profil/:id : le profil d'un autre membre (activités et trophées)
 export default function Profil() {
   const [member, setMember] = useState(null)
   const [runs, setRuns] = useState([])
+  const [challenges, setChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
+  const { id } = useParams()
+  const memberId = id || currentMember.id
+  const isMe = memberId === currentMember.id
+  const canEdit = isMe || currentMember.role === 'admin'
   const isMobile = useIsMobile()
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
@@ -36,16 +45,17 @@ export default function Profil() {
 
   const load = () => Promise.all([
     api.get('/members'),
-    api.get(`/runs/member/${currentMember.id}`),
-  ]).then(([membersRes, runsRes]) => {
-    const me = membersRes.data.find(m => m._id === currentMember.id)
-    setMember(me)
+    api.get(`/runs/member/${memberId}`),
+    api.get('/challenges'),
+  ]).then(([membersRes, runsRes, challengesRes]) => {
+    setMember(membersRes.data.find(m => m._id === memberId))
     setRuns(runsRes.data)
+    setChallenges(challengesRes.data)
   }).catch(err => console.error(err))
     .finally(() => setLoading(false))
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [memberId])
 
   const handleEditRun = async (run) => {
     const input = window.prompt('Nouvelle distance (km) :', run.km)
@@ -85,6 +95,15 @@ export default function Profil() {
   const runsWithKm = runs.filter(r => r.km > 0)
   const avgKm = runsWithKm.length ? (totalKm / runsWithKm.length).toFixed(1) : 0
   const longestRun = runs.reduce((max, r) => Math.max(max, r.km), 0)
+
+  // Trophées : podiums des challenges terminés, du plus récent au plus ancien, avec le titre donné par un admin
+  const trophies = challenges
+    .filter(c => c.resultsFrozen)
+    .sort((a, b) => b.endDate.localeCompare(a.endDate))
+    .flatMap(c => (c.results || [])
+      .filter(r => r.memberId === memberId && r.rank <= 3)
+      .map(r => ({ challenge: c, rank: r.rank, value: r.value, title: c.titles?.[r.rank - 1] })))
+  const latestTitle = trophies.find(t => t.title)?.title
 
   const timeAgo = (date) => {
     const diff = Math.floor((new Date() - new Date(date)) / 60000)
@@ -127,6 +146,22 @@ export default function Profil() {
           }}>
             {member.role === 'admin' ? '★ Administrateur' : 'Membre'}
           </span>
+          {latestTitle && (
+            <span style={{
+              display: 'inline-block', padding: '4px 12px', borderRadius: '99px', marginLeft: '8px',
+              background: 'rgba(245,158,11,0.2)', color: '#fbbf24', fontSize: '12px', fontWeight: 600,
+            }}>
+              🏅 {latestTitle}
+            </span>
+          )}
+          {member.suspended && (
+            <span style={{
+              display: 'inline-block', padding: '4px 12px', borderRadius: '99px', marginLeft: '8px',
+              background: 'rgba(239,68,68,0.2)', color: '#fca5a5', fontSize: '12px', fontWeight: 600,
+            }}>
+              Compte suspendu
+            </span>
+          )}
         </div>
         <div style={{
           position: 'absolute', right: '-40px', top: '-40px',
@@ -138,10 +173,10 @@ export default function Profil() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Km totaux', value: member.totalKm, color: '#1e3a8a' },
+          { label: 'Km totaux', value: fmtKm(member.totalKm), color: '#1e3a8a' },
           { label: 'Activités', value: totalActivities, color: '#e67e22' },
-          { label: 'Moyenne / activité', value: `${avgKm} km`, color: '#16a34a' },
-          { label: 'Plus longue', value: `${longestRun} km`, color: '#9333ea' },
+          { label: 'Moyenne / activité', value: `${fmtKm(avgKm)} km`, color: '#16a34a' },
+          { label: 'Plus longue', value: `${fmtKm(longestRun)} km`, color: '#9333ea' },
         ].map(card => (
           <div key={card.label} style={{
             background: '#fff', borderRadius: '14px',
@@ -157,6 +192,36 @@ export default function Profil() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Trophées */}
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e8edf5', padding: '1.5rem', marginBottom: '2rem',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
+        <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '1rem' }}>
+          Trophées
+        </p>
+        {trophies.length === 0 ? (
+          <p style={{ fontSize: '14px', color: '#64748b' }}>Pas encore de podium. Le prochain challenge est le bon !</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
+            {trophies.map(t => (
+              <div key={t.challenge._id} style={{
+                background: t.rank === 1 ? '#fffbeb' : '#f8f9fb', borderRadius: '12px', padding: '1rem',
+                border: `1px solid ${t.rank === 1 ? '#fde68a' : '#eef1f6'}`,
+              }}>
+                <div style={{ fontSize: '26px', marginBottom: '6px' }}>{MEDALS[t.rank - 1]}</div>
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>{t.challenge.name}</p>
+                {t.title && <p style={{ fontSize: '13px', fontWeight: 700, color: '#e67e22', marginTop: '2px' }}>« {t.title} »</p>}
+                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  {t.rank === 1 ? '1er' : `${t.rank}e`} · {t.challenge.type === 'streak' ? `${t.value} jours` : `${fmtKm(t.value)} km`}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Historique des activités */}
@@ -211,16 +276,18 @@ export default function Profil() {
                     color: isValidation ? '#e67e22' : '#14532d',
                     fontSize: '14px', fontWeight: 700,
                   }}>
-                    {isValidation ? '✓ Validée' : `${run.km} km`}
+                    {isValidation ? '✓ Validée' : `${fmtKm(run.km)} km`}
                   </span>
-                  {!isValidation && (
+                  {canEdit && !isValidation && (
                     <button onClick={() => handleEditRun(run)} aria-label="Modifier la distance" title="Modifier la distance" style={{
                       background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
                     }}>✏️</button>
                   )}
-                  <button onClick={() => handleDeleteRun(run)} aria-label="Supprimer l'activité" title="Supprimer l'activité" style={{
-                    background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
-                  }}>🗑️</button>
+                  {canEdit && (
+                    <button onClick={() => handleDeleteRun(run)} aria-label="Supprimer l'activité" title="Supprimer l'activité" style={{
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '4px',
+                    }}>🗑️</button>
+                  )}
                 </div>
               )
             })}
@@ -228,8 +295,8 @@ export default function Profil() {
         )}
       </div>
 
-      {/* Changer le mot de passe */}
-      <form onSubmit={handlePassword} style={{
+      {/* Changer le mot de passe : seulement sur son propre profil */}
+      {isMe && <form onSubmit={handlePassword} style={{
         background: '#fff', borderRadius: '16px',
         border: '1px solid #e8edf5', padding: '1.5rem', marginTop: '2rem',
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
@@ -279,7 +346,7 @@ export default function Profil() {
         }}>
           {pwLoading ? 'Mise à jour...' : 'Mettre à jour'}
         </button>
-      </form>
+      </form>}
     </div>
   )
 }
