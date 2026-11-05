@@ -200,6 +200,23 @@ export default function Profil() {
         </Card>
       )}
 
+      {/* Profil public : ses séries de jours consécutifs */}
+      {!isMe && (
+        <Card style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '12px' }}>
+          <span style={{ width: 48, height: 48, borderRadius: '14px', background: C.orangeSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon name="local_fire_department" size={26} color={C.orange} />
+          </span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '12px', color: C.muted }}>Série actuelle</p>
+            <p style={{ fontSize: '20px', fontWeight: 700, color: C.text }}>{streak.current} jour{streak.current > 1 ? 's' : ''}</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '12px', color: C.muted }}>Record</p>
+            <p style={{ fontSize: '20px', fontWeight: 700, color: C.text }}>{streak.longest} jour{streak.longest > 1 ? 's' : ''}</p>
+          </div>
+        </Card>
+      )}
+
       {(trophies.length > 0 || !isMe) && (
         <>
           <SectionTitle

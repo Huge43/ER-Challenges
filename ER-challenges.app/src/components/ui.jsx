@@ -7,18 +7,19 @@ export const Icon = ({ name, size = 22, color, style }) => (
   <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: size, color, ...style }}>{name}</span>
 )
 
-// Logo carré orange + « Elite Runners. »
+// Logo du club, sans fond, suivi du nom.
+// Le dessin n'occupe qu'une bande de l'image carrée (x 130→800, y 295→590 sur 1024) : on recadre dessus.
 export const Brand = ({ size = 36, to = '/dashboard' }) => (
   <Link to={to} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-    <span style={{
-      width: size, height: size, borderRadius: size * 0.28, background: C.orange,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-    }}>
-      {/* Le logo occupe le centre d'une image carrée avec beaucoup de marge : on l'agrandit */}
-      <img src={logo} alt="" style={{ width: '170%', height: '170%', objectFit: 'contain', transform: 'translateY(4%)' }} />
-    </span>
-    <span style={{ fontSize: '19px', fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>
-      Elite Runners<span style={{ color: C.orange }}>.</span>
+    <span aria-hidden="true" style={{
+      width: Math.round(size * 0.65 * 2.27), height: Math.round(size * 0.65), flexShrink: 0,
+      backgroundImage: `url(${logo})`, backgroundRepeat: 'no-repeat',
+      backgroundSize: '152.8% auto', backgroundPosition: '36.7% 40.5%',
+      // Lettres blanches à l'origine : inversées pour rester lisibles sur le fond clair
+      filter: 'invert(1)',
+    }} />
+    <span style={{ fontSize: Math.round(size * 0.53), fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>
+      Elite Runners
     </span>
   </Link>
 )
