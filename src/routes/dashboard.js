@@ -9,8 +9,12 @@ const router = express.Router()
 
 router.get('/', async (req, res) => {
   try {
-    const active = (await Challenge.find({ active: true })).filter(c => !isChallengeOver(c))
-    const totalMembers = await Member.countDocuments()
+    // Challenges commencés et pas terminés, comme /challenges/active
+    const today = clubToday()
+    const active = (await Challenge.find({ active: true })).filter(c => !isChallengeOver(c) && dayOf(c.startDate) <= today)
+    // Les comptes suspendus ne comptent ni dans les membres ni dans les tops
+    const suspended = (await Member.distinct('_id', { suspended: true })).map(String)
+    const totalMembers = (await Member.countDocuments()) - suspended.length
     const now = new Date()
 
     // Top 3 des km saisis dans chaque challenge actif, par id de challenge
@@ -20,16 +24,18 @@ router.get('/', async (req, res) => {
         { $match: { challenges: c._id } },
         { $group: { _id: '$member', km: { $sum: '$km' } } },
         { $sort: { km: -1 } },
-        { $limit: 3 },
         { $lookup: { from: 'members', localField: '_id', foreignField: '_id', as: 'member' } },
         { $unwind: '$member' },
+        { $match: { 'member.suspended': { $ne: true } } },
+        { $limit: 3 },
         { $project: { name: '$member.name', km: { $round: ['$km', 1] } } },
       ])
     }
 
     // Actif = au moins un run dans les 7 derniers jours (trusted : sanitizeFilter bloquerait $gte)
     const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
-    const activeMembers = (await Run.distinct('member', { date: mongoose.trusted({ $gte: weekAgo }) })).length
+    const activeMembers = (await Run.distinct('member', { date: mongoose.trusted({ $gte: weekAgo }) }))
+      .filter(id => !suspended.includes(String(id))).length
 
     res.json({ activeMembers, totalMembers, topContributors })
   } catch (err) {

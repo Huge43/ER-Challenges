@@ -242,3 +242,41 @@ test('défi de série classé par record, la série cassée ne fait pas dispara�
   assert.equal(members[0].name, 'Alice')
 })
 
+test('confidentialité, comptes suspendus, défi pas encore commencé, arrondi au dixième', async () => {
+  const today = clubToday()
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const bob = (await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).data.token
+  const aliceId = (await Member.findOne({ email: 'alice@test.com' }))._id.toString()
+
+  // Seuls les admins voient les e-mails
+  assert.ok((await call('GET', '/members', bob)).data.every(m => m.email === undefined))
+  assert.ok((await call('GET', '/members', admin)).data.every(m => m.email))
+  assert.ok((await call('GET', '/members/streaks', bob)).data.every(m => m.email === undefined))
+
+  // Un compte suspendu disparaît des listes des membres, des séries et du classement en direct
+  const streak = (await call('GET', '/challenges/active', admin)).data.find(c => c.name === 'Streak')
+  await call('PUT', `/members/${aliceId}/suspend`, admin, { suspended: true })
+  assert.ok(!(await call('GET', '/members', bob)).data.some(m => m._id === aliceId))
+  assert.ok((await call('GET', '/members', admin)).data.some(m => m._id === aliceId), 'les admins le voient pour le gérer')
+  assert.ok(!(await call('GET', '/members/streaks', bob)).data.some(m => m._id === aliceId))
+  assert.ok(!(await call('GET', `/challenges/${streak._id}/ranking`, bob)).data.ranking.some(m => m.memberId === aliceId))
+  await call('PUT', `/members/${aliceId}/suspend`, admin, { suspended: false })
+
+  // Un défi activé à l'avance n'apparaît pas encore parmi les défis en cours
+  const actives = (await call('GET', '/challenges/active', admin)).data
+  await Promise.all(actives.filter(c => c.name !== 'Streak').map(c => call('PUT', `/challenges/${c._id}/pause`, admin)))
+  const later = (await call('POST', '/challenges', admin, {
+    name: 'Plus tard', type: 'distance', scope: 'collectif', goalKm: 100, startDate: shift(today, 3), endDate: shift(today, 10), active: true,
+  })).data
+  assert.ok(!(await call('GET', '/challenges/active', admin)).data.some(c => c._id === later._id))
+  await call('PUT', `/challenges/${later._id}/pause`, admin)
+
+  // Classement d'un défi distance arrondi au dixième, pas à l'unité
+  const dist = (await call('POST', '/challenges', admin, {
+    name: 'Dixièmes', type: 'distance', scope: 'collectif', goalKm: 100, startDate: today, endDate: shift(today, 3), active: true,
+  })).data
+  await call('POST', '/runs', bob, { km: 7.36, date: today })
+  const { ranking } = (await call('GET', `/challenges/${dist._id}/ranking`, admin)).data
+  // 7 km déjà saisis aujourd'hui + 7,36 km = 14,36 km, arrondi au dixième
+  assert.equal(ranking.find(m => m.name === 'Bob').value, 14.4)
+})

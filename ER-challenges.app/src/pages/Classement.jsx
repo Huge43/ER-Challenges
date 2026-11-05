@@ -45,7 +45,7 @@ export default function Classement() {
     unit = tab === 'km' ? 'km' : 'jours'
     // Séries : le plus long streak de chacun (le streak en cours retombe à 0 dès qu'un jour manque)
     list = tab === 'km'
-      ? members.map(m => ({ id: m._id, name: m.name, value: m.totalKm }))
+      ? members.filter(m => !m.suspended).map(m => ({ id: m._id, name: m.name, value: m.totalKm }))
       : streaks.map(m => ({ id: m._id, name: m.name, value: m.longest }))
   } else {
     const isStreak = ranking?.challenge?.type === 'streak'

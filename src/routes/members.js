@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import express from 'express'
+import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 import Member, { memberInputError } from '../models/Member.js'
 import Run from '../models/Run.js'
@@ -10,10 +11,14 @@ import { recomputeChallenges } from '../challengeRuns.js'
 
 const router = express.Router()
 
-// GET tous les membres triés par km
+// GET tous les membres triés par km.
+// Seuls les admins voient les e-mails et les comptes suspendus (pour les gérer)
 router.get('/', async (req, res) => {
   try {
-    const members = await Member.find().sort({ totalKm: -1 }).select('-password')
+    const isAdminReq = req.member.role === 'admin'
+    const members = await Member.find(isAdminReq ? {} : { suspended: mongoose.trusted({ $ne: true }) })
+      .sort({ totalKm: -1 })
+      .select(isAdminReq ? '-password' : '-password -email')
     res.json(members)
   } catch (err) {
     console.error(err)
@@ -102,7 +107,8 @@ router.delete('/:id', isAdmin, async (req, res) => {
 // GET classement des streaks de tous les membres
 router.get('/streaks', async (req, res) => {
   try {
-    const members = await Member.find().select('-password')
+    // Comptes suspendus exclus du classement des séries
+    const members = await Member.find({ suspended: mongoose.trusted({ $ne: true }) }).select('name totalKm')
     const runs = await Run.find()
 
     const results = members.map(m => {
@@ -111,7 +117,6 @@ router.get('/streaks', async (req, res) => {
       return {
         _id: m._id,
         name: m.name,
-        email: m.email,
         totalKm: m.totalKm,
         ...streak,
       }
