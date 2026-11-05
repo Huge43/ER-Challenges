@@ -74,7 +74,7 @@ export default function Landing() {
           }}>
             <Icon name="directions_run" size={190} color="rgba(255,255,255,0.06)" style={{ position: 'absolute', right: '-24px', top: '-14px' }} />
             <span style={{ background: 'rgba(255,255,255,0.14)', borderRadius: '99px', padding: '5px 12px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em' }}>
-              DÉFI COLLECTIF
+              EXEMPLE DE DÉFI
             </span>
             <p style={{ fontSize: '28px', fontWeight: 700, margin: '1.1rem 0 1.4rem', position: 'relative' }}>Tour du monde</p>
             <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', position: 'relative' }}>40 075 km à parcourir ensemble</p>

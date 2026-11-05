@@ -4,7 +4,7 @@ import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
 import Member from '../models/Member.js'
-import { calcStreak, isChallengeOver } from '../streak.js'
+import { calcStreak, isChallengeOver, dayOf, clubToday } from '../streak.js'
 import { syncChallengeRuns } from '../challengeRuns.js'
 
 // Calcule et fige le classement final d'un challenge terminé
@@ -135,8 +135,10 @@ router.get('/', async (req, res) => {
 // GET challenges actifs (plusieurs peuvent tourner en parallèle), du plus ancien au plus récent
 router.get('/active', async (req, res) => {
   try {
+    // Seulement les challenges commencés : un challenge activé à l'avance n'accepte pas encore de runs
+    const today = clubToday()
     const active = (await Challenge.find({ active: true }).sort({ startDate: 1 }))
-      .filter(c => !isChallengeOver(c))
+      .filter(c => !isChallengeOver(c) && dayOf(c.startDate) <= today)
     res.json(await withMemberKm(active))
   } catch (err) {
     console.error(err)
@@ -273,7 +275,8 @@ router.get('/:id/streak', async (req, res) => {
         memberId: id,
         name: data.name,
         ...calcStreak(data.dates),
-      })).sort((a, b) => b.current - a.current)
+      // Classé par record (comme le podium final), la série en cours départage les égalités
+      })).sort((a, b) => b.longest - a.longest || b.current - a.current)
 
       return res.json({ scope: 'individuel', members: results, goalDays: challenge.goalDays })
     }
@@ -332,8 +335,9 @@ router.get('/:id/ranking', async (req, res) => {
         byMember[id].dates.push(r.date)
       })
       ranking = Object.entries(byMember).map(([id, d]) => ({
-        memberId: id, name: d.name, email: d.email, ...calcStreak(d.dates),
-      })).sort((a, b) => b.current - a.current || b.longest - a.longest)
+        memberId: id, name: d.name, ...calcStreak(d.dates),
+      // Classé par record (comme le podium final), la série en cours départage les égalités
+      })).sort((a, b) => b.longest - a.longest || b.current - a.current)
     } else {
       const byMember = {}
       runs.forEach(r => {

@@ -35,7 +35,6 @@ const getPalierProgress = (value, paliers) => {
 export default function Progression() {
   const [members, setMembers] = useState([])
   const [streaks, setStreaks] = useState([])
-  const [runs, setRuns] = useState([])
   const [tab, setTab] = useState('km')
   const [loading, setLoading] = useState(true)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
@@ -45,11 +44,9 @@ export default function Progression() {
     Promise.all([
       api.get('/members'),
       api.get('/members/streaks'),
-      api.get('/runs'),
-    ]).then(([membersRes, streaksRes, runsRes]) => {
+    ]).then(([membersRes, streaksRes]) => {
       setMembers(membersRes.data)
       setStreaks(streaksRes.data)
-      setRuns(runsRes.data)
     }).catch(err => console.error(err))
       .finally(() => setLoading(false))
   }, [])
@@ -75,7 +72,7 @@ export default function Progression() {
     : [...streaks]
 
   // Stats communauté
-  const totalKm = runs.reduce((sum, r) => sum + r.km, 0)
+  const totalKm = members.reduce((sum, m) => sum + (m.totalKm || 0), 0)
   const avgKm = members.length ? (members.reduce((s, m) => s + m.totalKm, 0) / members.length).toFixed(0) : 0
   const bestStreak = streaks[0]?.current || 0
   const avgStreak = streaks.length ? (streaks.reduce((s, m) => s + m.current, 0) / streaks.length).toFixed(1) : 0
