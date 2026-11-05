@@ -7,8 +7,11 @@ import Member from '../models/Member.js'
 import { calcStreak, isChallengeOver, dayOf, clubToday } from '../streak.js'
 import { syncChallengeRuns } from '../challengeRuns.js'
 
+// Km arrondis au dixième, comme à l'affichage
+const round1 = (km) => Math.round(km * 10) / 10
+
 // Calcule et fige le classement final d'un challenge terminé
-const freezeResults = async (challenge) => {
+export const freezeResults = async (challenge) => {
   const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name')
 
   let ranking = []
@@ -37,7 +40,7 @@ const freezeResults = async (challenge) => {
     ranking = Object.entries(byMember).map(([id, d]) => ({
       memberId: id,
       name: d.name,
-      value: Math.round(d.value),
+      value: round1(d.value),
     }))
   }
 
