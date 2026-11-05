@@ -208,7 +208,7 @@ export default function Membres() {
                           {isMe && <span style={{ fontSize: '11px', color: '#e8822a', fontWeight: 700 }}>(moi)</span>}
                           {m.suspended && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '99px', background: '#fee2e2', color: '#991b1b', fontSize: '11px', fontWeight: 700 }}>Suspendu</span>}
                         </p>
-                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>
+                        {m.email && <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>}
                       </div>
                     </div>
                   </td>

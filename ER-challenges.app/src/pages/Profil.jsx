@@ -103,7 +103,7 @@ export default function Profil() {
   const trend = prevKm > 0 ? Math.round(((monthKm - prevKm) / prevKm) * 100) : null
   const monthWithKm = monthRuns.filter(r => r.km > 0)
   const monthAvg = monthWithKm.length ? monthKm / monthWithKm.length : 0
-  const rank = [...members].sort((a, b) => b.totalKm - a.totalKm).findIndex(m => m._id === memberId) + 1
+  const rank = members.filter(m => !m.suspended).sort((a, b) => b.totalKm - a.totalKm).findIndex(m => m._id === memberId) + 1
   const since = new Date(member.createdAt)
 
   // Trophées : podiums des challenges terminés, du plus récent au plus ancien, avec le titre donné par un admin

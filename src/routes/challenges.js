@@ -69,7 +69,7 @@ const withMemberKm = async (challenges) => {
   for (const c of list) {
     if (!ids.includes(c._id)) continue
     c.memberKm = rows
-      .filter(r => r._id.challenge.equals(c._id) && r.member[0])
+      .filter(r => r._id.challenge.equals(c._id) && r.member[0] && !r.member[0].suspended)
       .map(r => ({ memberId: r._id.member.toString(), name: r.member[0].name, km: Math.round(r.km * 10) / 10 }))
   }
   return list
@@ -265,11 +265,11 @@ router.get('/:id/streak', async (req, res) => {
       return res.json({ scope: 'collectif', ...streak, goalDays: challenge.goalDays })
     } else {
       // Streak individuel : on calcule pour chaque membre et on renvoie le classement
-      const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name')
+      const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name suspended')
       const byMember = {}
       runs.forEach(run => {
         const id = run.member?._id?.toString()
-        if (!id) return
+        if (!id || run.member.suspended) return
         if (!byMember[id]) byMember[id] = { name: run.member.name, dates: [] }
         byMember[id].dates.push(run.date)
       })
@@ -325,16 +325,17 @@ router.get('/:id/ranking', async (req, res) => {
     const challenge = await Challenge.findById(req.params.id)
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
 
-    const runs = await Run.find({ challenges: challenge._id }).populate('member', 'name email')
+    // Comptes suspendus exclus du classement en direct (le classement figé garde l'historique)
+    const runs = (await Run.find({ challenges: challenge._id }).populate('member', 'name suspended'))
+      .filter(r => r.member && !r.member.suspended)
 
     let ranking = []
 
     if (challenge.type === 'streak') {
       const byMember = {}
       runs.forEach(r => {
-        const id = r.member?._id?.toString()
-        if (!id) return
-        if (!byMember[id]) byMember[id] = { name: r.member.name, email: r.member.email, dates: [] }
+        const id = r.member._id.toString()
+        if (!byMember[id]) byMember[id] = { name: r.member.name, dates: [] }
         byMember[id].dates.push(r.date)
       })
       ranking = Object.entries(byMember).map(([id, d]) => ({
@@ -344,13 +345,12 @@ router.get('/:id/ranking', async (req, res) => {
     } else {
       const byMember = {}
       runs.forEach(r => {
-        const id = r.member?._id?.toString()
-        if (!id) return
-        if (!byMember[id]) byMember[id] = { name: r.member.name, email: r.member.email, value: 0 }
+        const id = r.member._id.toString()
+        if (!byMember[id]) byMember[id] = { name: r.member.name, value: 0 }
         byMember[id].value += r.km
       })
       ranking = Object.entries(byMember).map(([id, d]) => ({
-        memberId: id, name: d.name, email: d.email, value: Math.round(d.value),
+        memberId: id, name: d.name, value: round1(d.value),
       })).sort((a, b) => b.value - a.value)
     }
 
