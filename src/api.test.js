@@ -153,7 +153,12 @@ test('plusieurs challenges actifs, validation des dates, étapes', async () => {
   const dash = (await call('GET', '/dashboard', bobToken)).data
   assert.equal(dash.topContributors[nov._id][0].km, 17)
 
-  // Un streak tourne en parallèle : une validation à 0 km ne compte que pour lui
+  // Supprimer Novembre : les runs partagés restent comptés dans le Tour
+  await call('DELETE', `/challenges/${nov._id}`, admin)
+  assert.equal((await challenge(tour._id)).currentKm, 20)
+  assert.equal((await Member.findById(bob)).totalKm, 20)
+
+  // Novembre supprimé, une place se libère : un streak tourne en parallèle du Tour : une validation à 0 km ne compte que pour lui
   const streak = (await call('POST', '/challenges', admin, {
     name: 'Streak', type: 'streak', scope: 'individuel', goalDays: 7, startDate: today, endDate: shift(today, 6), active: true,
   })).data
@@ -162,12 +167,61 @@ test('plusieurs challenges actifs, validation des dates, étapes', async () => {
   assert.equal((await call('GET', `/challenges/${streak._id}/streak`, bobToken)).data.members[0].current, 1)
   assert.equal((await challenge(tour._id)).currentKm, 20)
 
-  // Supprimer Novembre : les runs partagés restent comptés dans le Tour
-  await call('DELETE', `/challenges/${nov._id}`, admin)
-  assert.equal((await challenge(tour._id)).currentKm, 20)
-  assert.equal((await Member.findById(bob)).totalKm, 20)
-
   // Raccourcir la période du Tour détache le run d'il y a 5 jours
   await call('PUT', `/challenges/${tour._id}`, admin, { startDate: shift(today, -2) })
   assert.equal((await challenge(tour._id)).currentKm, 17)
+})
+
+test('maximum 2 challenges actifs', async () => {
+  const today = clubToday()
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const actives = (await call('GET', '/challenges/active', admin)).data
+  assert.equal(actives.length, 2, 'le Tour et le Streak du test précédent sont actifs')
+
+  // Un 3e challenge actif est refusé, à la création comme à l'activation
+  const base = { type: 'distance', scope: 'collectif', goalKm: 100, startDate: today, endDate: shift(today, 5) }
+  const refused = await call('POST', '/challenges', admin, { ...base, name: 'Trop', active: true })
+  assert.equal(refused.status, 400)
+  assert.match(refused.data.message, /déjà actifs/)
+  const third = (await call('POST', '/challenges', admin, { ...base, name: 'Troisième', active: false })).data
+  assert.equal((await call('PUT', `/challenges/${third._id}/activate`, admin)).status, 400)
+  // Réactiver un challenge déjà actif reste possible
+  assert.equal((await call('PUT', `/challenges/${actives[0]._id}/activate`, admin)).status, 200)
+
+})
+
+test('suspension de compte', async () => {
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  // Suspension : sessions coupées, connexion refusée, données conservées
+  const bobToken = (await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).data.token
+  const bob = (await Member.findOne({ email: 'bob@test.com' }))._id.toString()
+  assert.equal((await call('PUT', `/members/${bob}/suspend`, bobToken, { suspended: true })).status, 403)
+  assert.equal((await call('PUT', `/members/${bob}/suspend`, admin, { suspended: true })).status, 200)
+  assert.equal((await call('GET', '/members', bobToken)).status, 401)
+  const login = await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })
+  assert.equal(login.status, 403)
+  assert.match(login.data.message, /suspendu/)
+  assert.ok((await call('GET', `/runs/member/${bob}`, admin)).data.length > 0, 'ses runs sont conservés')
+
+  await call('PUT', `/members/${bob}/suspend`, admin, { suspended: false })
+  assert.equal((await call('POST', '/auth/login', null, { email: 'bob@test.com', password: 'motdepasse1' })).status, 200)
+})
+
+test('titres du podium', async () => {
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const actives = (await call('GET', '/challenges/active', admin)).data
+  const third = (await call('GET', '/challenges', admin)).data.find(c => c.name === 'Troisième')
+  // Titres : modifiables après la fin du challenge, le reste est figé
+  const tour = actives.find(c => c.name === 'Tour du monde')
+  await call('PUT', `/challenges/${tour._id}/end`, admin)
+  const titled = await call('PUT', `/challenges/${tour._id}`, admin, { titles: ['Globe-trotteur', 'Explorateur', ''] })
+  assert.equal(titled.status, 200)
+  assert.deepEqual(titled.data.titles, ['Globe-trotteur', 'Explorateur', ''])
+  assert.equal((await call('PUT', `/challenges/${tour._id}`, admin, { name: 'Autre nom' })).status, 400)
+  const frozen = (await call('GET', '/challenges', admin)).data.find(c => c._id === tour._id)
+  assert.equal(frozen.results[0].name, 'Bob')
+
+  // Le Tour terminé libère une place
+  assert.equal((await call('PUT', `/challenges/${third._id}/activate`, admin)).status, 200)
+
 })

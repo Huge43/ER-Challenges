@@ -1,4 +1,5 @@
 import express from 'express'
+import mongoose from 'mongoose'
 import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
@@ -74,8 +75,25 @@ const withMemberKm = async (challenges) => {
 const router = express.Router()
 
 // Champs qu'un admin peut définir (results, resultsFrozen et currentKm sont calculés par le serveur)
-const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'active']
+const FIELDS = ['name', 'description', 'type', 'icon', 'goalKm', 'goalDays', 'scope', 'startDate', 'endDate', 'stages', 'titles', 'active']
 const pick = (body) => Object.fromEntries(FIELDS.filter(f => body?.[f] !== undefined).map(f => [f, body[f]]))
+
+// Nombre maximum de challenges actifs en même temps
+const MAX_ACTIVE = 2
+const tooManyActive = async (exceptId) => {
+  const active = (await Challenge.find({ active: true })).filter(c => !isChallengeOver(c) && !c._id.equals(exceptId))
+  return active.length >= MAX_ACTIVE
+}
+const TOO_MANY = `${MAX_ACTIVE} challenges sont déjà actifs : mets-en un en pause avant d'en activer un autre.`
+
+// Titres donnés au 1er, 2e et 3e d'un challenge (chaînes vides autorisées)
+const cleanTitles = (titles) => {
+  if (titles === undefined) return {}
+  if (!Array.isArray(titles) || titles.length > 3 || titles.some(t => typeof t !== 'string' || t.length > 60)) {
+    return { error: 'Titres invalides : 3 titres de 60 caractères maximum.' }
+  }
+  return { titles: titles.map(t => t.trim()) }
+}
 
 // Étapes d'un challenge distance : nom + km entre 0 et l'objectif, triées par km.
 // Renvoie { error } ou { stages } (stages absent si non fourni)
@@ -146,6 +164,10 @@ router.post('/', isAdmin, async (req, res) => {
     const { error, stages } = cleanStages(fields.stages, Number(fields.goalKm))
     if (error) return res.status(400).json({ message: error })
     if (stages) fields.stages = stages
+    const t = cleanTitles(fields.titles)
+    if (t.error) return res.status(400).json({ message: t.error })
+    if (t.titles) fields.titles = t.titles
+    if (fields.active && await tooManyActive()) return res.status(400).json({ message: TOO_MANY })
 
     const challenge = new Challenge(fields)
     await challenge.save()
@@ -165,6 +187,15 @@ router.put('/:id', isAdmin, async (req, res) => {
     const existing = await Challenge.findById(req.params.id)
     if (!existing) return res.status(404).json({ message: 'Challenge introuvable.' })
 
+    const t = cleanTitles(updates.titles)
+    if (t.error) return res.status(400).json({ message: t.error })
+    // Challenge terminé : seuls les titres du podium se modifient encore, le reste est figé
+    if (isChallengeOver(existing)) {
+      if (!t.titles) return res.status(400).json({ message: 'Ce challenge est terminé : seuls ses titres sont modifiables.' })
+      return res.json(await Challenge.findByIdAndUpdate(req.params.id, { titles: t.titles }, { new: true }))
+    }
+    if (t.titles) updates.titles = t.titles
+
     const { error, stages } = cleanStages(updates.stages, Number(updates.goalKm ?? existing.goalKm))
     if (error) return res.status(400).json({ message: error })
     if (stages) updates.stages = stages
@@ -181,6 +212,8 @@ router.put('/:id', isAdmin, async (req, res) => {
 // PUT activer un challenge (admin) ; les autres challenges actifs le restent
 router.put('/:id/activate', isAdmin, async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Challenge introuvable.' })
+    if (await tooManyActive(new mongoose.Types.ObjectId(req.params.id))) return res.status(400).json({ message: TOO_MANY })
     const challenge = await Challenge.findByIdAndUpdate(req.params.id, { active: true }, { new: true })
     if (!challenge) return res.status(404).json({ message: 'Challenge introuvable.' })
     // Les runs déjà saisis dans sa période comptent aussi

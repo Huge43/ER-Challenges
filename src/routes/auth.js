@@ -60,6 +60,8 @@ router.post('/login', loginLimit, async (req, res) => {
 
     const valid = await bcrypt.compare(password, member.password)
     if (!valid) return res.status(400).json({ message: 'Email ou mot de passe incorrect.' })
+    // Après la vérification du mot de passe, pour ne pas révéler quels comptes sont suspendus
+    if (member.suspended) return res.status(403).json({ message: 'Ce compte est suspendu. Contacte un admin du club.' })
 
     const token = signToken(member)
 

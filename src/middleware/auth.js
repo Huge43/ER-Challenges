@@ -9,7 +9,8 @@ export const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
     const member = await Member.findById(decoded.id).select('-password')
     // Jeton émis avant le dernier changement de mot de passe : refusé
-    if (!member || (decoded.v || 0) !== (member.tokenVersion || 0)) return res.status(401).json({ message: 'Non autorisé.' })
+    // Compte suspendu : toutes ses sessions sont coupées
+    if (!member || member.suspended || (decoded.v || 0) !== (member.tokenVersion || 0)) return res.status(401).json({ message: 'Non autorisé.' })
     req.member = member
     next()
   } catch {

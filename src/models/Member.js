@@ -10,6 +10,8 @@ const memberSchema = new mongoose.Schema({
   role: { type: String, enum: ['member', 'admin'], default: 'member' },
   // Incrémenté à chaque changement de mot de passe pour invalider les anciens jetons
   tokenVersion: { type: Number, default: 0 },
+  // Compte suspendu : données conservées, connexion impossible
+  suspended: { type: Boolean, default: false },
   // Lien de réinitialisation : seul le hash du jeton est stocké ; select: false le garde hors des réponses
   resetTokenHash: { type: String, select: false },
   resetTokenExpires: { type: Date, select: false },

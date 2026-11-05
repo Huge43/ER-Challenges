@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
+import { PageTitle } from '../components/ui'
 import useIsMobile from '../hooks/useIsMobile'
-import { getStatus, getProgress as getProgressOf, formatDay } from '../utils/challenge'
+import { getStatus, getProgress as getProgressOf, formatDay, fmtKm } from '../utils/challenge'
 
 const TYPES = {
-  distance: { label: 'Distance', icon: '🏃', color: '#1e3a8a' },
-  streak: { label: 'Streak', icon: '🔥', color: '#e67e22' },
+  distance: { label: 'Distance', icon: '🏃', color: '#e8822a' },
+  streak: { label: 'Streak', icon: '🔥', color: '#e8822a' },
 }
 
 const SCOPES = {
@@ -23,8 +24,10 @@ const emptyForm = () => ({
   name: '', description: '', type: 'distance', icon: '🏃',
   goalKm: '', goalDays: '', scope: 'collectif',
   startDate: new Date().toLocaleDateString('en-CA'),
-  endDate: '', active: false, stages: [],
+  endDate: '', active: false, stages: [], titles: ['', '', ''],
 })
+
+const RANKS = ['1er', '2e', '3e']
 
 // Lignes d'étapes du formulaire → étapes envoyées à l'API (lignes vides ignorées)
 const stagesPayload = (rows) => rows
@@ -42,6 +45,8 @@ export default function Challenges() {
   const [tab, setTab] = useState('actifs')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  // Challenge terminé : seule la saisie des titres du podium est proposée
+  const [titlesOnly, setTitlesOnly] = useState(false)
   const currentMember = JSON.parse(localStorage.getItem('member') || '{}')
   const token = localStorage.getItem('token')
   const isAdmin = currentMember.role === 'admin'
@@ -73,11 +78,14 @@ export default function Challenges() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
+    setTitlesOnly(false)
     setError('')
   }
 
-  const handleEdit = (c) => {
+  const handleEdit = (c, onlyTitles = false) => {
+    setTitlesOnly(onlyTitles)
     setForm({
+      titles: [0, 1, 2].map(i => c.titles?.[i] || ''),
       name: c.name,
       description: c.description || '',
       type: c.type,
@@ -98,6 +106,18 @@ export default function Challenges() {
 
   const handleCreate = async () => {
     setError('')
+    if (titlesOnly) {
+      try {
+        await api.put(`/challenges/${editingId}`, { titles: form.titles })
+        setSuccess('Titres enregistrés !')
+        closeModal()
+        fetchChallenges()
+        setTimeout(() => setSuccess(''), 3000)
+      } catch (err) {
+        setError(err.response?.data?.message || 'Erreur.')
+      }
+      return
+    }
     if (!form.name || !form.endDate) {
       setError('Nom et date de fin sont requis.')
       return
@@ -120,6 +140,7 @@ export default function Challenges() {
         endDate: form.endDate,
         active: form.active,
         scope: form.scope,
+        titles: form.titles,
       }
       if (form.type === 'distance') {
         payload.goalKm = Number(form.goalKm)
@@ -153,6 +174,7 @@ export default function Challenges() {
     goalKm: c.goalKm ? String(c.goalKm) : '',
     goalDays: c.goalDays ? String(c.goalDays) : '',
     stages: stagesForm(c.stages),
+    titles: [0, 1, 2].map(i => c.titles?.[i] || ''),
     scope: c.scope || 'collectif',
     startDate: new Date().toLocaleDateString('en-CA'),
     endDate: '',
@@ -222,13 +244,13 @@ export default function Challenges() {
   const inputStyle = {
     width: '100%', padding: '11px 14px',
     border: '1px solid #e2e8f0', borderRadius: '8px',
-    fontSize: '14px', color: '#1e2a4a', background: '#f8fafc', outline: 'none',
+    fontSize: '14px', color: '#16223f', background: '#f8fafc', outline: 'none',
   }
 
   const labelStyle = {
     display: 'block', fontSize: '11px', fontWeight: 700,
     letterSpacing: '0.08em', textTransform: 'uppercase',
-    color: '#1e2a4a', marginBottom: '6px',
+    color: '#16223f', marginBottom: '6px',
   }
 
   if (loading) return (
@@ -251,19 +273,14 @@ export default function Challenges() {
       {/* Header */}
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-            Challenges
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>
-            Tous les défis de la communauté Elite Runners.
-          </p>
+          <PageTitle eyebrow="Défis" title="Vos objectifs, notre énergie." subtitle={`Tous les défis de la communauté Elite Runners.`} style={{ marginBottom: 0 }} />
         </div>
         {isAdmin && (
           <button
             onClick={openCreate}
             style={{
-              padding: '10px 20px', background: '#e67e22',
-              color: '#fff', border: 'none', borderRadius: '10px',
+              padding: '14px 20px', background: '#e8822a',
+              color: '#fff', border: 'none', borderRadius: '14px',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em',
             }}
           >
@@ -285,7 +302,7 @@ export default function Challenges() {
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '9px 20px', borderRadius: '9px', border: 'none',
             background: tab === t.key ? '#fff' : 'transparent',
-            color: tab === t.key ? '#1e2a4a' : '#64748b',
+            color: tab === t.key ? '#16223f' : '#64748b',
             fontSize: '13px', fontWeight: tab === t.key ? 700 : 500,
             cursor: 'pointer',
             boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
@@ -334,22 +351,22 @@ export default function Challenges() {
             return (
               <div key={c._id} style={{
                 background: '#fff', borderRadius: '16px',
-                border: c.active && !isFinished ? '2px solid #16a34a' : '1px solid #e8edf5',
+                border: c.active && !isFinished ? '1.5px solid #f6c79c' : '1px solid #eceff3',
                 padding: '1.5rem',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <div style={{
                     width: '48px', height: '48px', borderRadius: '12px',
-                    background: `${typeInfo.color}15`,
+                    background: '#fdf0e4',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
                   }}>
-                    {c.icon || typeInfo.icon}
+                    <span className="material-symbols-rounded" aria-hidden="true" style={{ color: '#e8822a' }}>{c.type === 'streak' ? 'local_fire_department' : 'flag'}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <span style={{
                       padding: '4px 10px', borderRadius: '99px',
-                      background: '#fff7ed', color: '#e67e22',
+                      background: '#fff7ed', color: '#e8822a',
                       fontSize: '11px', fontWeight: 600,
                     }}>
                       {c.scope === 'collectif' ? 'Collectif' : 'Individuel'}
@@ -364,7 +381,7 @@ export default function Challenges() {
                   </div>
                 </div>
 
-                <h3 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#1e2a4a', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '22px', fontWeight: 600, color: '#16223f', marginBottom: '4px' }}>
                   {c.name}
                 </h3>
                 <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginBottom: '1.25rem', minHeight: '40px' }}>
@@ -374,7 +391,7 @@ export default function Challenges() {
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                     <span style={{ color: '#64748b' }}>{progress.label}</span>
-                    <span style={{ fontWeight: 700, color: typeInfo.color }}>{progress.pct}%</span>
+                    <span style={{ fontWeight: 700, color: typeInfo.color }}>{fmtKm(progress.pct)} %</span>
                   </div>
                   <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${progress.pct}%`, background: typeInfo.color, borderRadius: '99px' }} />
@@ -399,14 +416,17 @@ export default function Challenges() {
                         <span style={{ fontSize: idx < 3 ? '16px' : '13px', width: '28px', color: '#64748b', fontWeight: 600 }}>
                           {['🥇', '🥈', '🥉'][idx] || `#${idx + 1}`}
                         </span>
-                        <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#1e2a4a' }}>
+                        <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#16223f' }}>
                           {r.name}
+                          {idx < 3 && c.titles?.[idx] && (
+                            <span style={{ marginLeft: '6px', fontSize: '11px', fontWeight: 700, color: '#e8822a' }}>« {c.titles[idx]} »</span>
+                          )}
                         </span>
                         <span style={{
                           fontSize: '13px', fontWeight: 700,
-                          color: idx === 0 ? '#e67e22' : '#64748b',
+                          color: idx === 0 ? '#e8822a' : '#64748b',
                         }}>
-                          {r.value} {c.type === 'streak' ? 'jours' : 'km'}
+                          {c.type === 'streak' ? r.value : fmtKm(r.value)} {c.type === 'streak' ? 'jours' : 'km'}
                         </span>
                       </div>
                     ))}
@@ -428,6 +448,12 @@ export default function Challenges() {
                         }}>
                           Relancer
                         </button>
+                        <button onClick={() => handleEdit(c, true)} style={{
+                          padding: '8px 14px', background: '#fffbeb', color: '#92400e',
+                          border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Titres
+                        </button>
                         <button onClick={() => handleDelete(c._id, c.name)} style={{
                           padding: '8px 14px', background: '#fee2e2', color: '#991b1b',
                           border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
@@ -442,7 +468,7 @@ export default function Challenges() {
                             flex: 1, padding: '8px', background: '#fef3c7', color: '#92400e',
                             border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                           }}>
-                            Mettre en pause
+                            Pause
                           </button>
                         ) : (
                           <button onClick={() => handleActivate(c._id)} style={{
@@ -453,7 +479,7 @@ export default function Challenges() {
                           </button>
                         )}
                         <button onClick={() => handleEnd(c._id, c.name)} style={{
-                          flex: 1, padding: '8px', background: '#fff7ed', color: '#e67e22',
+                          flex: 1, padding: '8px', background: '#fff7ed', color: '#e8822a',
                           border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                         }}>
                           Terminer
@@ -492,8 +518,8 @@ export default function Challenges() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
-                {editingId ? 'Modifier le challenge' : 'Créer un challenge'}
+              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#16223f' }}>
+                {titlesOnly ? 'Titres du podium' : editingId ? 'Modifier le challenge' : 'Créer un challenge'}
               </h2>
               <button onClick={closeModal} aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
@@ -504,6 +530,7 @@ export default function Challenges() {
               </div>
             )}
 
+            {!titlesOnly && (<>
             <div style={{ marginBottom: '1rem' }}>
               <label style={labelStyle}>Nom du challenge</label>
               <input type="text" placeholder="Ex: Marathon de Mai" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
@@ -549,11 +576,11 @@ export default function Challenges() {
                     {SCOPES[form.type].map(opt => (
                       <button key={opt.key} type="button" onClick={() => setForm({ ...form, scope: opt.key })} style={{
                         padding: '12px', borderRadius: '8px', textAlign: 'left',
-                        border: form.scope === opt.key ? '2px solid #e67e22' : '1px solid #e2e8f0',
+                        border: form.scope === opt.key ? '2px solid #e8822a' : '1px solid #e2e8f0',
                         background: form.scope === opt.key ? '#fff7ed' : '#f8fafc',
                         cursor: 'pointer',
                       }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: form.scope === opt.key ? '#e67e22' : '#1e2a4a' }}>{opt.label}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: form.scope === opt.key ? '#e8822a' : '#16223f' }}>{opt.label}</div>
                         <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{opt.desc}</div>
                       </button>
                     ))}
@@ -599,12 +626,28 @@ export default function Challenges() {
               </div>
             )}
 
+            </>)}
+
+            {/* Titres donnés au podium à la fin du challenge */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={labelStyle}>Titres du podium <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel)</span></label>
+              {RANKS.map((rank, i) => (
+                <div key={rank} style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b' }}>{rank}</span>
+                  <input type="text" maxLength={60} placeholder={['Ex: Roi du bitume', 'Ex: Dauphin', 'Ex: Médaille de bronze'][i]}
+                    aria-label={`Titre du ${rank}`} value={form.titles[i]}
+                    onChange={e => setForm({ ...form, titles: form.titles.map((t, j) => j === i ? e.target.value : t) })}
+                    style={inputStyle} />
+                </div>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={closeModal} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Annuler
               </button>
-              <button onClick={handleCreate} style={{ flex: 1, padding: '11px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                {editingId ? 'Enregistrer →' : 'Créer le challenge →'}
+              <button onClick={handleCreate} style={{ flex: 1, padding: '11px', background: '#e8822a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                {titlesOnly || editingId ? 'Enregistrer →' : 'Créer le challenge →'}
               </button>
             </div>
           </div>

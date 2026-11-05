@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../api'
+import { PageTitle } from '../components/ui'
+import { fmtKm } from '../utils/challenge'
 import useIsMobile from '../hooks/useIsMobile'
 
 const COLORS = ['#dbeafe','#e0e7ff','#fce7f3','#dcfce7','#fef3c7','#fee2e2','#f3e8ff','#e0f2fe','#f0fdf4','#fdf4ff']
@@ -62,6 +65,20 @@ export default function Membres() {
     }
   }
 
+  // Suspendre plutôt que supprimer : le compte ne peut plus se connecter, ses activités restent
+  const handleSuspend = async (m) => {
+    const suspend = !m.suspended
+    if (suspend && !window.confirm(`Suspendre le compte de ${m.name} ? Il ne pourra plus se connecter, ses activités sont conservées.`)) return
+    try {
+      await api.put(`/members/${m._id}/suspend`, { suspended: suspend })
+      setSuccess(suspend ? `${m.name} est suspendu.` : `${m.name} est réactivé.`)
+      fetchMembers()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur.')
+    }
+  }
+
   const handleResetLink = async (id, name) => {
     try {
       const res = await api.post(`/members/${id}/reset-link`)
@@ -90,7 +107,7 @@ export default function Membres() {
   const inputStyle = {
     width: '100%', padding: '11px 14px',
     border: '1px solid #e2e8f0', borderRadius: '8px',
-    fontSize: '14px', color: '#1e2a4a',
+    fontSize: '14px', color: '#16223f',
     background: '#f8fafc', outline: 'none',
   }
 
@@ -106,18 +123,13 @@ export default function Membres() {
       {/* Header */}
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontFamily: 'Poppins, sans-serif', fontSize: isMobile ? '28px' : '36px', fontWeight: 600, color: '#1e2a4a', marginBottom: '6px' }}>
-            Membres
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>
-            {members.length} Elites dans la communauté Elite Runners.
-          </p>
+          <PageTitle eyebrow="Membres" title="Les runners du collectif." subtitle={`${members.length} Elites dans la communauté Elite Runners.`} style={{ marginBottom: 0 }} />
         </div>
         {isAdmin && (
           <button
             onClick={() => setShowModal(true)}
             style={{
-              padding: '10px 20px', background: '#e67e22',
+              padding: '10px 20px', background: '#e8822a',
               color: '#fff', border: 'none', borderRadius: '10px',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
               letterSpacing: '0.05em',
@@ -154,7 +166,7 @@ export default function Membres() {
         border: '1px solid #e8edf5', overflow: 'hidden', overflowX: 'auto',
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
       }}>
-        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
           <thead>
             <tr style={{ background: '#f8f9fb' }}>
               <th style={{ padding: '14px 1.5rem', textAlign: 'left', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>Athlète</th>
@@ -191,8 +203,10 @@ export default function Membres() {
                         {m.name.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div>
-                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e2a4a' }}>
-                          {m.name} {isMe && <span style={{ fontSize: '11px', color: '#e67e22', fontWeight: 700 }}>(moi)</span>}
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#16223f' }}>
+                          <Link to={`/profil/${m._id}`} style={{ color: '#16223f', textDecoration: 'none' }}>{m.name}</Link>{' '}
+                          {isMe && <span style={{ fontSize: '11px', color: '#e8822a', fontWeight: 700 }}>(moi)</span>}
+                          {m.suspended && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '99px', background: '#fee2e2', color: '#991b1b', fontSize: '11px', fontWeight: 700 }}>Suspendu</span>}
                         </p>
                         <p style={{ fontSize: '12px', color: '#94a3b8' }}>{m.email}</p>
                       </div>
@@ -230,14 +244,14 @@ export default function Membres() {
                       background: '#eff6ff', color: '#1e3a8a',
                       borderRadius: '6px', fontSize: '13px', fontWeight: 700,
                     }}>
-                      {m.totalKm} km
+                      {fmtKm(m.totalKm)} km
                     </span>
                   </td>
                   <td style={{ padding: '14px 1rem' }}>
                     <span style={{
                       display: 'inline-block', padding: '4px 12px',
                       background: longest > 0 ? '#fff7ed' : '#f1f5f9',
-                      color: longest > 0 ? '#e67e22' : '#94a3b8',
+                      color: longest > 0 ? '#e8822a' : '#94a3b8',
                       borderRadius: '6px', fontSize: '13px', fontWeight: 700,
                     }}>
                       {longest} {longest > 1 ? 'jours' : 'jour'} {longest > 0 && '🔥'}
@@ -249,7 +263,7 @@ export default function Membres() {
                     </p>
                   </td>
                   {isAdmin && (
-                    <td style={{ padding: '14px 1.5rem', textAlign: 'right' }}>
+                    <td style={{ padding: '14px 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {!isMe && (
                         <>
                         <button
@@ -261,6 +275,18 @@ export default function Membres() {
                           }}
                         >
                           Réinitialiser le mot de passe
+                        </button>
+                        <button
+                          onClick={() => handleSuspend(m)}
+                          style={{
+                            padding: '6px 14px', marginRight: '8px',
+                            background: m.suspended ? '#dcfce7' : '#fef3c7',
+                            color: m.suspended ? '#14532d' : '#92400e',
+                            border: 'none', borderRadius: '6px',
+                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          {m.suspended ? 'Réactiver' : 'Suspendre'}
                         </button>
                         <button
                           onClick={() => handleDelete(m._id, m.name)}
@@ -298,7 +324,7 @@ export default function Membres() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1e2a4a' }}>
+              <h2 style={{ fontFamily: 'Poppins, sans-serif', fontSize: '24px', fontWeight: 600, color: '#16223f' }}>
                 Ajouter un membre
               </h2>
               <button onClick={() => { setShowModal(false); setError('') }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
@@ -311,24 +337,24 @@ export default function Membres() {
             )}
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '6px' }}>Nom complet</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#16223f', marginBottom: '6px' }}>Nom complet</label>
               <input type="text" placeholder="Marie Leclair" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '6px' }}>Email</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#16223f', marginBottom: '6px' }}>Email</label>
               <input type="email" placeholder="marie@elite.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} />
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#16223f', marginBottom: '6px' }}>
                 Mot de passe <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(8 caractères minimum)</span>
               </label>
               <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} style={inputStyle} />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#1e2a4a', marginBottom: '6px' }}>Rôle</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#16223f', marginBottom: '6px' }}>Rôle</label>
               <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="member">Membre</option>
                 <option value="admin">Admin</option>
@@ -339,7 +365,7 @@ export default function Membres() {
               <button onClick={() => { setShowModal(false); setError('') }} style={{ flex: 1, padding: '11px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Annuler
               </button>
-              <button onClick={handleAdd} style={{ flex: 1, padding: '11px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={handleAdd} style={{ flex: 1, padding: '11px', background: '#e8822a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                 Ajouter →
               </button>
             </div>

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import Sidebar from './components/Sidebar'
+import AppShell from './components/AppShell'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -12,25 +12,6 @@ import Profil from './pages/Profil'
 import Landing from './pages/Landing'
 import ResetPassword from './pages/ResetPassword'
 import ProtectedRoute from './components/ProtectedRoute'
-import useIsMobile from './hooks/useIsMobile'
-
-function Layout({ children }) {
-  const isMobile = useIsMobile()
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar />
-      <main style={{
-        flex: 1, background: '#f8f9fb',
-        padding: isMobile ? '1rem' : '2rem',
-        paddingTop: isMobile ? '72px' : '2rem',
-        overflowY: 'auto',
-        width: '100%',
-      }}>
-        {children}
-      </main>
-    </div>
-  )
-}
 
 export default function App() {
   return (
@@ -42,7 +23,7 @@ export default function App() {
         <Route path="/reinitialiser/:token" element={<ResetPassword />} />
         <Route path="/*" element={
           <ProtectedRoute>
-            <Layout>
+            <AppShell>
               <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/classement" element={<Classement />} />
@@ -51,9 +32,10 @@ export default function App() {
                 <Route path="/soumettre" element={<SoumettreRun />} />
                 <Route path="/membres" element={<Membres />} />
                 <Route path="/profil" element={<Profil />} />
+                <Route path="/profil/:id" element={<Profil />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
-            </Layout>
+            </AppShell>
           </ProtectedRoute>
         } />
       </Routes>
