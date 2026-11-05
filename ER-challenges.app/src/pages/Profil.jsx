@@ -101,8 +101,6 @@ export default function Profil() {
   const monthKm = monthRuns.reduce((s, r) => s + r.km, 0)
   const prevKm = inMonth(prev).reduce((s, r) => s + r.km, 0)
   const trend = prevKm > 0 ? Math.round(((monthKm - prevKm) / prevKm) * 100) : null
-  const withKm = runs.filter(r => r.km > 0)
-  const avgKm = withKm.length ? withKm.reduce((s, r) => s + r.km, 0) / withKm.length : 0
   const monthWithKm = monthRuns.filter(r => r.km > 0)
   const monthAvg = monthWithKm.length ? monthKm / monthWithKm.length : 0
   const rank = [...members].sort((a, b) => b.totalKm - a.totalKm).findIndex(m => m._id === memberId) + 1
@@ -121,7 +119,7 @@ export default function Profil() {
     { label: 'Distance totale', icon: 'route', value: `${fmtKm(monthKm)} km`, sub: trend === null ? `Total : ${fmtKm(member.totalKm)} km` : `${trend >= 0 ? '+' : ''}${trend} % vs ${MONTHS[Number(prev.slice(5, 7)) - 1]}` },
     { label: 'Sorties', icon: 'footprint', value: monthRuns.length, sub: 'Ce mois-ci' },
     { label: 'Série actuelle', icon: 'local_fire_department', value: `${streak.current} jour${streak.current > 1 ? 's' : ''}`, sub: `Record : ${streak.longest} jour${streak.longest > 1 ? 's' : ''}` },
-    { label: 'Distance moyenne', icon: 'monitoring', value: `${fmtKm(avgKm)} km`, sub: 'Par sortie' },
+    { label: 'Distance moyenne', icon: 'monitoring', value: `${fmtKm(monthAvg)} km`, sub: 'Par sortie ce mois-ci' },
   ]
   const shownRuns = showAll ? runs : runs.slice(0, isMe ? 5 : 4)
 
