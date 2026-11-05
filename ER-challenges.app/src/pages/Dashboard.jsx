@@ -55,7 +55,7 @@ export default function Dashboard() {
   const heroStages = hero && hero.type !== 'streak' && hero.goalKm ? stageInfo(hero.stages, heroProgress.value) : null
   const streakTop = hero?.type === 'streak' && hero.scope === 'individuel' ? streaks[hero._id]?.members?.slice(0, 3) : null
   const top = streakTop
-    ? streakTop.map(m => ({ id: m.memberId, name: m.name, value: `${m.current} j` }))
+    ? streakTop.map(m => ({ id: m.memberId, name: m.name, value: `${m.longest} j` }))
     : (data.topContributors?.[hero?._id] || []).map(m => ({ id: m._id, name: m.name, value: `${fmtKm(m.km)} km` }))
   const firstName = me.name?.split(' ')[0] || ''
 

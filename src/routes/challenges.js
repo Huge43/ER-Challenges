@@ -273,7 +273,8 @@ router.get('/:id/streak', async (req, res) => {
         memberId: id,
         name: data.name,
         ...calcStreak(data.dates),
-      })).sort((a, b) => b.current - a.current)
+      // Classé par record (comme le podium final), la série en cours départage les égalités
+      })).sort((a, b) => b.longest - a.longest || b.current - a.current)
 
       return res.json({ scope: 'individuel', members: results, goalDays: challenge.goalDays })
     }
@@ -332,8 +333,9 @@ router.get('/:id/ranking', async (req, res) => {
         byMember[id].dates.push(r.date)
       })
       ranking = Object.entries(byMember).map(([id, d]) => ({
-        memberId: id, name: d.name, email: d.email, ...calcStreak(d.dates),
-      })).sort((a, b) => b.current - a.current || b.longest - a.longest)
+        memberId: id, name: d.name, ...calcStreak(d.dates),
+      // Classé par record (comme le podium final), la série en cours départage les égalités
+      })).sort((a, b) => b.longest - a.longest || b.current - a.current)
     } else {
       const byMember = {}
       runs.forEach(r => {

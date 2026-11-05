@@ -50,7 +50,7 @@ export default function Classement() {
   } else {
     const isStreak = ranking?.challenge?.type === 'streak'
     unit = isStreak ? 'jours' : 'km'
-    list = (ranking?.ranking || []).map(m => ({ id: m.memberId, name: m.name, value: isStreak ? m.current : m.value }))
+    list = (ranking?.ranking || []).map(m => ({ id: m.memberId, name: m.name, value: isStreak ? m.longest : m.value }))
   }
   list = list.filter(m => m.value > 0).sort((a, b) => b.value - a.value)
 

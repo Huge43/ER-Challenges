@@ -225,3 +225,20 @@ test('titres du podium', async () => {
   assert.equal((await call('PUT', `/challenges/${third._id}/activate`, admin)).status, 200)
 
 })
+
+test('défi de série classé par record, la série cassée ne fait pas disparaître le membre', async () => {
+  const today = clubToday()
+  const admin = (await call('POST', '/auth/login', null, { email: 'admin@test.com', password: 'motdepasse1' })).data.token
+  const alice = (await call('POST', '/auth/login', null, { email: 'alice@test.com', password: 'encoreun1' })).data.token
+  const streak = (await call('GET', '/challenges/active', admin)).data.find(c => c.name === 'Streak')
+  // Le défi commence 10 jours plus tôt : Alice y a tenu 3 jours, puis s'est arrêtée
+  await call('PUT', `/challenges/${streak._id}`, admin, { startDate: shift(today, -10) })
+  for (const d of [-9, -8, -7]) await call('POST', '/runs', alice, { km: 0, date: shift(today, d) })
+
+  // Bob a couru hier et aujourd'hui : série en cours 2, record 2. Alice : série en cours 0, record 3
+  const { ranking } = (await call('GET', `/challenges/${streak._id}/ranking`, admin)).data
+  assert.deepEqual(ranking.map(m => [m.name, m.longest, m.current]), [['Alice', 3, 0], ['Bob', 2, 2]])
+  const { members } = (await call('GET', `/challenges/${streak._id}/streak`, admin)).data
+  assert.equal(members[0].name, 'Alice')
+})
+
