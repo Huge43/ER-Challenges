@@ -4,7 +4,7 @@ import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
 import { isAdmin } from '../middleware/auth.js'
 import Member from '../models/Member.js'
-import { calcStreak, isChallengeOver } from '../streak.js'
+import { calcStreak, isChallengeOver, dayOf, clubToday } from '../streak.js'
 import { syncChallengeRuns } from '../challengeRuns.js'
 
 // Calcule et fige le classement final d'un challenge terminé
@@ -135,8 +135,10 @@ router.get('/', async (req, res) => {
 // GET challenges actifs (plusieurs peuvent tourner en parallèle), du plus ancien au plus récent
 router.get('/active', async (req, res) => {
   try {
+    // Seulement les challenges commencés : un challenge activé à l'avance n'accepte pas encore de runs
+    const today = clubToday()
     const active = (await Challenge.find({ active: true }).sort({ startDate: 1 }))
-      .filter(c => !isChallengeOver(c))
+      .filter(c => !isChallengeOver(c) && dayOf(c.startDate) <= today)
     res.json(await withMemberKm(active))
   } catch (err) {
     console.error(err)

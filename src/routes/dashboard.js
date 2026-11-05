@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 import Member from '../models/Member.js'
 import Challenge from '../models/Challenge.js'
 import Run from '../models/Run.js'
-import { isChallengeOver } from '../streak.js'
+import { isChallengeOver, dayOf, clubToday } from '../streak.js'
 
 const router = express.Router()
 
